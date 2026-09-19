@@ -1,0 +1,379 @@
+{
+  "markers": [
+    {
+      "node_id": "pref_theme_dark",
+      "kind": "fact",
+      "horizon": "durable",
+      "content": "Editor theme preference: dark mode",
+      "tags": [
+        "preference",
+        "ui",
+        "theme"
+      ],
+      "salience": 0.9,
+      "content_ref": "local://pref_theme_dark"
+    },
+    {
+      "node_id": "pref_theme_font",
+      "kind": "fact",
+      "horizon": "session",
+      "content": "Preferred monospace font: JetBrains Mono",
+      "tags": [
+        "preference",
+        "ui",
+        "font"
+      ],
+      "salience": 0.7,
+      "content_ref": "local://pref_theme_font"
+    },
+    {
+      "node_id": "pref_lang_zh_tw",
+      "kind": "fact",
+      "horizon": "durable",
+      "content": "Preferred UI language: Traditional Chinese",
+      "tags": [
+        "preference",
+        "locale",
+        "language"
+      ],
+      "salience": 0.95,
+      "content_ref": "local://pref_lang_zh_tw"
+    },
+    {
+      "node_id": "pref_lang_en_tech",
+      "kind": "fact",
+      "horizon": "durable",
+      "content": "Technical docs preferred in English",
+      "tags": [
+        "preference",
+        "locale",
+        "docs"
+      ],
+      "salience": 0.8,
+      "content_ref": "local://pref_lang_en_tech"
+    },
+    {
+      "node_id": "pref_tz_taipei",
+      "kind": "fact",
+      "horizon": "durable",
+      "content": "Timezone preference Asia/Taipei",
+      "tags": [
+        "preference",
+        "locale",
+        "timezone"
+      ],
+      "salience": 0.9,
+      "content_ref": "local://pref_tz_taipei"
+    },
+    {
+      "node_id": "pref_coffee_oat",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Morning drink: oat milk latte",
+      "tags": [
+        "preference",
+        "food",
+        "drink"
+      ],
+      "salience": 0.55,
+      "content_ref": "local://pref_coffee_oat"
+    },
+    {
+      "node_id": "pref_tea_green",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Afternoon drink: green tea",
+      "tags": [
+        "preference",
+        "food",
+        "drink"
+      ],
+      "salience": 0.5,
+      "content_ref": "local://pref_tea_green"
+    },
+    {
+      "node_id": "pref_notif_mute",
+      "kind": "fact",
+      "horizon": "session",
+      "content": "Mute non-urgent notifications after 22:00",
+      "tags": [
+        "preference",
+        "notifications"
+      ],
+      "salience": 0.75,
+      "content_ref": "local://pref_notif_mute"
+    },
+    {
+      "node_id": "pref_commit_style",
+      "kind": "procedure",
+      "horizon": "durable",
+      "content": "Use conventional commits; keep PRs small",
+      "tags": [
+        "procedure",
+        "git",
+        "workflow"
+      ],
+      "salience": 0.85,
+      "content_ref": "local://pref_commit_style"
+    },
+    {
+      "node_id": "pref_test_first",
+      "kind": "procedure",
+      "horizon": "durable",
+      "content": "Prefer pytest with coverage before merge",
+      "tags": [
+        "procedure",
+        "testing",
+        "workflow"
+      ],
+      "salience": 0.8,
+      "content_ref": "local://pref_test_first"
+    },
+    {
+      "node_id": "pref_python_311",
+      "kind": "fact",
+      "horizon": "durable",
+      "content": "Target Python 3.11+ for packages",
+      "tags": [
+        "preference",
+        "python",
+        "runtime"
+      ],
+      "salience": 0.85,
+      "content_ref": "local://pref_python_311"
+    },
+    {
+      "node_id": "pref_pydantic_v2",
+      "kind": "fact",
+      "horizon": "session",
+      "content": "Prefer pydantic v2 for schemas",
+      "tags": [
+        "preference",
+        "python",
+        "schema"
+      ],
+      "salience": 0.7,
+      "content_ref": "local://pref_pydantic_v2"
+    },
+    {
+      "node_id": "pref_editor_vim",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Editor keybindings: vim mode",
+      "tags": [
+        "preference",
+        "ui",
+        "editor"
+      ],
+      "salience": 0.65,
+      "content_ref": "local://pref_editor_vim"
+    },
+    {
+      "node_id": "pref_shell_bash",
+      "kind": "fact",
+      "horizon": "session",
+      "content": "Default shell: bash",
+      "tags": [
+        "preference",
+        "shell"
+      ],
+      "salience": 0.6,
+      "content_ref": "local://pref_shell_bash"
+    },
+    {
+      "node_id": "pref_music_focus",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Focus playlist: lo-fi instrumental",
+      "tags": [
+        "preference",
+        "music"
+      ],
+      "salience": 0.4,
+      "content_ref": "local://pref_music_focus"
+    },
+    {
+      "node_id": "pref_meeting_async",
+      "kind": "procedure",
+      "horizon": "session",
+      "content": "Prefer async updates over meetings when possible",
+      "tags": [
+        "preference",
+        "workstyle"
+      ],
+      "salience": 0.7,
+      "content_ref": "local://pref_meeting_async"
+    },
+    {
+      "node_id": "pref_review_checklist",
+      "kind": "procedure",
+      "horizon": "durable",
+      "content": "PR review checklist: tests, docs, security notes",
+      "tags": [
+        "procedure",
+        "review"
+      ],
+      "salience": 0.8,
+      "content_ref": "local://pref_review_checklist"
+    },
+    {
+      "node_id": "pref_license_mit",
+      "kind": "fact",
+      "horizon": "durable",
+      "content": "Default open-source license: MIT",
+      "tags": [
+        "preference",
+        "license"
+      ],
+      "salience": 0.75,
+      "content_ref": "local://pref_license_mit"
+    },
+    {
+      "node_id": "episode_last_demo",
+      "kind": "episode",
+      "horizon": "working",
+      "content": "Last demo covered FakeJev hydrate path",
+      "tags": [
+        "episode",
+        "demo"
+      ],
+      "salience": 0.45,
+      "content_ref": "local://episode_last_demo"
+    },
+    {
+      "node_id": "artifact_readme_draft",
+      "kind": "artifact",
+      "horizon": "session",
+      "content": "README draft emphasizes Jev is not the ranker",
+      "tags": [
+        "artifact",
+        "docs"
+      ],
+      "salience": 0.55,
+      "content_ref": "local://artifact_readme_draft"
+    },
+    {
+      "node_id": "noise_cricket",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Random cricket trivia scoreline 312/7",
+      "tags": [
+        "noise",
+        "sports"
+      ],
+      "salience": 0.1,
+      "content_ref": "local://noise_cricket"
+    },
+    {
+      "node_id": "noise_weather",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Synthetic weather note: cloudy 22C",
+      "tags": [
+        "noise",
+        "weather"
+      ],
+      "salience": 0.1,
+      "content_ref": "local://noise_weather"
+    },
+    {
+      "node_id": "noise_stock",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Synthetic ticker chatter XYZ +0.0%",
+      "tags": [
+        "noise",
+        "finance"
+      ],
+      "salience": 0.1,
+      "content_ref": "local://noise_stock"
+    },
+    {
+      "node_id": "overshare_health",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Synthetic health note: took vitamin C (demo only)",
+      "tags": [
+        "overshare",
+        "health"
+      ],
+      "salience": 0.2,
+      "content_ref": "local://overshare_health"
+    },
+    {
+      "node_id": "overshare_finance",
+      "kind": "fact",
+      "horizon": "working",
+      "content": "Synthetic budget note: demo wallet balance zero",
+      "tags": [
+        "overshare",
+        "finance"
+      ],
+      "salience": 0.2,
+      "content_ref": "local://overshare_finance"
+    },
+    {
+      "node_id": "edge_theme_font",
+      "kind": "edge",
+      "horizon": "session",
+      "content": "theme preference related to font preference",
+      "tags": [
+        "edge",
+        "ui"
+      ],
+      "salience": 0.3,
+      "content_ref": "local://edge_theme_font"
+    },
+    {
+      "node_id": "pref_ci_github",
+      "kind": "procedure",
+      "horizon": "durable",
+      "content": "CI via GitHub Actions with pytest and ruff",
+      "tags": [
+        "procedure",
+        "ci"
+      ],
+      "salience": 0.8,
+      "content_ref": "local://pref_ci_github"
+    },
+    {
+      "node_id": "pref_fail_closed",
+      "kind": "procedure",
+      "horizon": "durable",
+      "content": "On Jev errors: fail-closed, never open secrets",
+      "tags": [
+        "procedure",
+        "safety",
+        "jev"
+      ],
+      "salience": 0.95,
+      "content_ref": "local://pref_fail_closed"
+    },
+    {
+      "node_id": "pref_redact_outbound",
+      "kind": "procedure",
+      "horizon": "durable",
+      "content": "Redact outbound state to marker metadata only",
+      "tags": [
+        "procedure",
+        "safety",
+        "redact"
+      ],
+      "salience": 0.95,
+      "content_ref": "local://pref_redact_outbound"
+    },
+    {
+      "node_id": "pref_model_pin",
+      "kind": "fact",
+      "horizon": "durable",
+      "content": "Pin Jev model jev-1.13.0 after calibration",
+      "tags": [
+        "preference",
+        "jev",
+        "model"
+      ],
+      "salience": 0.7,
+      "content_ref": "local://pref_model_pin"
+    }
+  ]
+}

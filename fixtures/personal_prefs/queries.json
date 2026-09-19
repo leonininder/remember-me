@@ -1,0 +1,516 @@
+{
+  "queries": [
+    {
+      "id": "q01_ui_theme",
+      "query": "What is my editor theme preference?",
+      "relevant_ids": [
+        "pref_theme_dark"
+      ],
+      "overshare_ids": [
+        "overshare_health",
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q02_ui_font",
+      "query": "Which monospace font do I prefer?",
+      "relevant_ids": [
+        "pref_theme_font"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q03_locale_lang",
+      "query": "What UI language do I prefer?",
+      "relevant_ids": [
+        "pref_lang_zh_tw"
+      ],
+      "overshare_ids": [
+        "noise_cricket",
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q04_locale_docs",
+      "query": "What language for technical documentation?",
+      "relevant_ids": [
+        "pref_lang_en_tech"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q05_timezone",
+      "query": "What timezone should I use?",
+      "relevant_ids": [
+        "pref_tz_taipei"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q06_drink_morning",
+      "query": "What do I like to drink in the morning?",
+      "relevant_ids": [
+        "pref_coffee_oat"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q07_drink_afternoon",
+      "query": "Afternoon drink preference?",
+      "relevant_ids": [
+        "pref_tea_green"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q08_notifications",
+      "query": "Notification mute preferences after evening?",
+      "relevant_ids": [
+        "pref_notif_mute"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    },
+    {
+      "id": "q09_git_commits",
+      "query": "How should I format git commits?",
+      "relevant_ids": [
+        "pref_commit_style"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q10_testing",
+      "query": "What testing approach before merge?",
+      "relevant_ids": [
+        "pref_test_first"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q11_python_version",
+      "query": "Which Python version to target?",
+      "relevant_ids": [
+        "pref_python_311"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q12_pydantic",
+      "query": "Schema library preference for Python?",
+      "relevant_ids": [
+        "pref_pydantic_v2"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    },
+    {
+      "id": "q13_editor_keys",
+      "query": "Editor keybinding preference?",
+      "relevant_ids": [
+        "pref_editor_vim"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q14_shell",
+      "query": "What is my default shell?",
+      "relevant_ids": [
+        "pref_shell_bash"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q15_music",
+      "query": "Focus music preference?",
+      "relevant_ids": [
+        "pref_music_focus"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q16_meetings",
+      "query": "Meeting vs async preference?",
+      "relevant_ids": [
+        "pref_meeting_async"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q17_review",
+      "query": "PR review checklist preference?",
+      "relevant_ids": [
+        "pref_review_checklist"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q18_license",
+      "query": "Default open source license?",
+      "relevant_ids": [
+        "pref_license_mit"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    },
+    {
+      "id": "q19_ci",
+      "query": "Preferred CI setup?",
+      "relevant_ids": [
+        "pref_ci_github"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q20_safety_fail",
+      "query": "What happens on Jev errors?",
+      "relevant_ids": [
+        "pref_fail_closed"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q21_safety_redact",
+      "query": "How should outbound state be redacted?",
+      "relevant_ids": [
+        "pref_redact_outbound"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q22_jev_model",
+      "query": "Which Jev model pin to use?",
+      "relevant_ids": [
+        "pref_model_pin"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q23_ui_bundle",
+      "query": "UI preferences for theme and font?",
+      "relevant_ids": [
+        "pref_theme_dark",
+        "pref_theme_font"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q24_locale_bundle",
+      "query": "Locale preferences language and timezone?",
+      "relevant_ids": [
+        "pref_lang_zh_tw",
+        "pref_tz_taipei"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    },
+    {
+      "id": "q25_workflow_bundle",
+      "query": "Git and testing workflow preferences?",
+      "relevant_ids": [
+        "pref_commit_style",
+        "pref_test_first"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q26_python_bundle",
+      "query": "Python runtime and schema preferences?",
+      "relevant_ids": [
+        "pref_python_311",
+        "pref_pydantic_v2"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q27_safety_bundle",
+      "query": "Safety procedures for Jev and redaction?",
+      "relevant_ids": [
+        "pref_fail_closed",
+        "pref_redact_outbound"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q28_demo_episode",
+      "query": "What did the last demo cover?",
+      "relevant_ids": [
+        "episode_last_demo"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q29_readme_artifact",
+      "query": "What does the README draft emphasize?",
+      "relevant_ids": [
+        "artifact_readme_draft"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q30_avoid_noise",
+      "query": "Editor theme not sports trivia",
+      "relevant_ids": [
+        "pref_theme_dark"
+      ],
+      "overshare_ids": [
+        "noise_cricket",
+        "noise_weather",
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q31_avoid_overshare",
+      "query": "Locale preference without health notes",
+      "relevant_ids": [
+        "pref_lang_zh_tw"
+      ],
+      "overshare_ids": [
+        "overshare_health",
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q32_drink_any",
+      "query": "Beverage preferences today?",
+      "relevant_ids": [
+        "pref_coffee_oat",
+        "pref_tea_green"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q33_workstyle",
+      "query": "Preferred workstyle for updates?",
+      "relevant_ids": [
+        "pref_meeting_async"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    },
+    {
+      "id": "q34_docs_lang",
+      "query": "Docs language preference English?",
+      "relevant_ids": [
+        "pref_lang_en_tech"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q35_theme_only",
+      "query": "dark mode theme preference",
+      "relevant_ids": [
+        "pref_theme_dark"
+      ],
+      "overshare_ids": [
+        "pref_coffee_oat",
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q36_font_only",
+      "query": "JetBrains Mono font preference",
+      "relevant_ids": [
+        "pref_theme_font"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q37_tz_only",
+      "query": "Asia Taipei timezone preference",
+      "relevant_ids": [
+        "pref_tz_taipei"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q38_pytest_cov",
+      "query": "pytest coverage before merge preference",
+      "relevant_ids": [
+        "pref_test_first"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    },
+    {
+      "id": "q39_conventional_commits",
+      "query": "conventional commits small PRs",
+      "relevant_ids": [
+        "pref_commit_style"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q40_github_actions",
+      "query": "GitHub Actions pytest ruff CI",
+      "relevant_ids": [
+        "pref_ci_github"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q41_mit_license",
+      "query": "MIT license default preference",
+      "relevant_ids": [
+        "pref_license_mit"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q42_vim_mode",
+      "query": "vim mode keybindings editor",
+      "relevant_ids": [
+        "pref_editor_vim"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q43_bash_shell",
+      "query": "bash default shell preference",
+      "relevant_ids": [
+        "pref_shell_bash"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q44_lofi_music",
+      "query": "lo-fi instrumental focus playlist",
+      "relevant_ids": [
+        "pref_music_focus"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    },
+    {
+      "id": "q45_notif_evening",
+      "query": "mute notifications after 22:00",
+      "relevant_ids": [
+        "pref_notif_mute"
+      ],
+      "overshare_ids": [
+        "noise_stock"
+      ]
+    },
+    {
+      "id": "q46_green_tea",
+      "query": "green tea afternoon drink",
+      "relevant_ids": [
+        "pref_tea_green"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q47_oat_latte",
+      "query": "oat milk latte morning drink",
+      "relevant_ids": [
+        "pref_coffee_oat"
+      ],
+      "overshare_ids": [
+        "overshare_finance"
+      ]
+    },
+    {
+      "id": "q48_fail_closed_policy",
+      "query": "fail-closed never open secrets on Jev error",
+      "relevant_ids": [
+        "pref_fail_closed"
+      ],
+      "overshare_ids": [
+        "noise_weather"
+      ]
+    },
+    {
+      "id": "q49_redact_metadata",
+      "query": "redact outbound marker metadata only",
+      "relevant_ids": [
+        "pref_redact_outbound"
+      ],
+      "overshare_ids": [
+        "overshare_health"
+      ]
+    },
+    {
+      "id": "q50_model_pin_113",
+      "query": "pin jev-1.13.0 model after calibration",
+      "relevant_ids": [
+        "pref_model_pin"
+      ],
+      "overshare_ids": [
+        "noise_cricket"
+      ]
+    }
+  ]
+}
