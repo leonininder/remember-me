@@ -6,7 +6,6 @@ Local recall finds candidates. TypeSafe **Jev** gates include / stub / skip / pr
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![CI](https://img.shields.io/badge/CI-pytest%20%2B%20ruff-brightgreen.svg)](.github/workflows/ci.yml)
 [![Status: PREVIEW](https://img.shields.io/badge/status-PREVIEW%20Pre--Skill-orange.svg)](SCORECARD.md)
 
 ---
@@ -19,7 +18,7 @@ remember-me demo
 remember-me bakeoff
 ```
 
-Offline by default (`FakeJev`). Optional cloud: set `TYPESAFE_API_KEY` for `HttpJev` (pinned `jev-1.13.0`).
+Offline by default (`FakeJev`). `HttpJev` exists as **scaffolding** (pin `jev-1.13.0`) until System One (`POST /v1/systemone`) is proven — do **not** treat cloud mode as working.
 
 ---
 
@@ -29,7 +28,7 @@ Offline by default (`FakeJev`). Optional cloud: set `TYPESAFE_API_KEY` for `Http
 |----------|--------------|-----------------|
 | **Dump everything** | Shoves markers into the LLM | Budget, privacy, precision |
 | **Plain TEMPR / local top-k** | Keyword / tag / recency recall | Calibrated hydrate / skip / promote |
-| **Hindsight-only** | Strong memory *system* framing | A fail-closed decision gate on hydrate |
+| **Local top-k stub** (bake-off baseline) | Keyword/tag top-k stubs only | Commercial Hindsight product; calibrated live memory OS |
 | **Mem0 / full memory banks** | Store + retrieve product surface | Separating *rank* from *admit* |
 | **remember-me** | **Decision gate** after local recall | Replace your store or embedder |
 
@@ -145,20 +144,36 @@ See [SECURITY.md](SECURITY.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Limitations (honest)
 
-- **PREVIEW / Pre-Skill** — not a formal promoted skill ([SCORECARD.md](SCORECARD.md))
-- Offline bake-off uses **FakeJev**; live TypeSafe pilot not claimed here
-- We are a **gate layer**, not a drop-in Mem0 / full memory OS replacement
-- No fake star counts, Fortune 500 logos, or “100k stars” theater
+- **PREVIEW / Pre-Skill** — not a formal promoted skill. See [SCORECARD.md](SCORECARD.md) (~8.4–8.5 weighted, FakeJev evidence basis).
+- **Offline bake-off ≠ live proof.** `remember-me bakeoff` uses **FakeJev** (deterministic, no network). Published `bakeoff_metrics.json` must not be read as TypeSafe cloud latency or calibrated decision quality. See [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md) and [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md).
+- **No live acceleration claim.** We do **not** claim that Jev accelerates memory versus Hindsight or dump-all. Offline FakeJev precision deltas are **not** live proof. Any future win must be quality/token efficiency under measured live RTT — not “faster FakeJev.”
+- **HttpJev is scaffolding until proven.** Default path may not match public System One (`POST /v1/systemone`, `state` + typed `questions`). Do **not** advertise cloud mode as working without a successful redacted call log. See [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md).
+- **Gate layer, not a memory OS.** Non-goal: Mem0 / embedder / TEMPR-ranker replacement. Jev must not re-rank local candidates.
+- **Not a drop-in Claude / Codex / Hermes skill or plugin.** Library + CLI only; no official TypeSafe skill package. See [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md).
+- **No theater metrics.** No fake star counts, Fortune 500 logos, or invented production case studies. **FakeJev ≠ product proof.**
 
 ---
 
 ## Bake-off
 
-Offline harness: **Hindsight-stub-only** (local top-k) vs **Jev-gated** hydrate on 50 labeled synthetic queries — precision@k, recall@k, overshare proxy, latency, Jev call count.
+Offline harness: **`local_topk_stub`** (local top-k stubs; *not* commercial Hindsight) vs **Jev-gated** (FakeJev) on 50 labeled synthetic queries — precision@k, recall@k, overshare proxy, latency, Jev call count.
 
 ```bash
 make bakeoff
 ```
+
+Regenerate committed metrics with `make bakeoff` if numbers drift. See [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md).
+
+---
+
+## Further docs
+
+- [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md) — REAL / FAKE / CLAIMED
+- [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md) — run offline; HttpJev caveats
+- [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md) — Claude / Codex / Hermes positioning
+- [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md) — live bake-off plan (when ready)
+- [docs/reviews/](docs/reviews/) — external review notes
+- [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) · [SCORECARD.md](SCORECARD.md)
 
 ---
 

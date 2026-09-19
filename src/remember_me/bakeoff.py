@@ -96,7 +96,7 @@ def _percentile(values: list[float], p: float) -> float:
     return s[idx]
 
 
-def run_hindsight_stub(
+def run_local_topk_stub(
     graph: TopologyGraph, cases: list[QueryCase], *, k: int = 5
 ) -> BakeoffMetrics:
     """Baseline: local retrieve only; hydrate top-k stubs (no Jev)."""
@@ -111,7 +111,7 @@ def run_hindsight_stub(
         t0 = time.perf_counter()
         cands = retriever.retrieve(case.query, top_k=k)
         ids = [c.node_id for c in cands]
-        # Stub-only: treat all retrieved as "hydrated" stubs (Hindsight-only path).
+        # Stub-only: treat all retrieved as "hydrated" stubs (local top-k baseline; not commercial Hindsight).
         latencies.append((time.perf_counter() - t0) * 1000)
         p, r = _precision_recall(ids, case.relevant_ids, k)
         precs.append(p)
@@ -121,7 +121,7 @@ def run_hindsight_stub(
         hydrated_counts.append(len(ids))
 
     return BakeoffMetrics(
-        mode="hindsight_stub_only",
+        mode="local_topk_stub",
         n_queries=len(cases),
         precision_at_k=sum(precs) / len(precs) if precs else 0.0,
         recall_at_k=sum(recalls) / len(recalls) if recalls else 0.0,
@@ -186,7 +186,7 @@ def run_bakeoff(
     if len(cases) < 50:
         raise RuntimeError(f"expected >=50 queries, got {len(cases)}")
 
-    baseline = run_hindsight_stub(graph, cases, k=k)
+    baseline = run_local_topk_stub(graph, cases, k=k)
     gated = run_jev_gated(graph, cases, k=k)
 
     report: dict[str, Any] = {
