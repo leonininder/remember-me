@@ -224,6 +224,10 @@ class HttpJev:
     Always includes ``query_hash`` (sha256 hex of utf-8 query) in ``state``.
     Set ``include_raw_query=True`` to also send ``query_preview`` (full query).
 
+    Hydrate batching (default ``batch_candidates=True``): one ``POST`` with
+    ``state.candidates`` + questions keyed ``{node_id}__{question_id}``.
+    Set ``batch_candidates=False`` to fall back to per-node calls for debugging.
+
     Answer mapping → ``JevQuestionResult``:
     - Choice → value=choice str, confidence=confidence
     - Score → value=score number, confidence=confidence
@@ -240,12 +244,14 @@ class HttpJev:
         model_pin: str = JEV_MODEL_PIN,
         timeout_s: float = 5.0,
         include_raw_query: bool = False,
+        batch_candidates: bool = True,
     ) -> None:
         self.api_key = api_key or os.environ.get("TYPESAFE_API_KEY", "")
         self.base_url = base_url.rstrip("/")
         self.model_pin = model_pin
         self.timeout_s = timeout_s
         self.include_raw_query = include_raw_query
+        self.batch_candidates = batch_candidates
         self.call_count = 0
         self.last_outbound: list[dict[str, Any]] = []
         self.last_usage: dict[str, Any] | None = None
@@ -276,6 +282,7 @@ class HttpJev:
         *,
         optional_network: bool = False,
         optional_reflect: bool = False,
+        batch_candidates: bool | None = None,
     ) -> list[JevBatchResponse]:
         self.call_count += 1
         if candidates and isinstance(candidates[0], Candidate):
@@ -288,6 +295,16 @@ class HttpJev:
         if not outbound:
             return []
 
+        use_batch = self.batch_candidates if batch_candidates is None else batch_candidates
+        if use_batch:
+            return self._decide_hydrate_batched(
+                query,
+                outbound,
+                optional_network=optional_network,
+                optional_reflect=optional_reflect,
+            )
+
+        # Debug fallback: one System One POST per candidate (legacy shape).
         questions = _hydrate_questions(
             optional_network=optional_network, optional_reflect=optional_reflect
         )
@@ -302,6 +319,34 @@ class HttpJev:
             }
             results.append(self._post_system_one(payload, node_id=nid))
         return results
+
+    def _decide_hydrate_batched(
+        self,
+        query: str,
+        outbound: list[dict[str, Any]],
+        *,
+        optional_network: bool,
+        optional_reflect: bool,
+    ) -> list[JevBatchResponse]:
+        """ONE ``POST /v1/systemone`` for N redacted candidates.
+
+        Questions are keyed ``{node_id}__{question_id}``. Fail-closed: whole HTTP
+        failure → every node gets the same timed_out/denied/malformed; a missing
+        per-node answer slice → that node malformed, others OK.
+        """
+        node_ids = [str(c["node_id"]) for c in outbound]
+        questions = _hydrate_questions_batched(
+            node_ids,
+            optional_network=optional_network,
+            optional_reflect=optional_reflect,
+        )
+        state = self._build_state(query, {"candidates": outbound})
+        payload = {
+            "model": self.model_pin,
+            "state": state,
+            "questions": questions,
+        }
+        return self._post_system_one_batch(payload, node_ids=node_ids)
 
     def decide_admit(self, proposed: dict[str, Any]) -> JevBatchResponse:
         self.call_count += 1
@@ -363,6 +408,74 @@ class HttpJev:
             return JevBatchResponse(node_id=node_id, malformed=True, error="bad_answers")
         return JevBatchResponse(node_id=node_id, results=mapped)
 
+    def _post_system_one_batch(
+        self, payload: dict[str, Any], *, node_ids: list[str]
+    ) -> list[JevBatchResponse]:
+        """POST once; fan out answers to per-node ``JevBatchResponse``."""
+
+        def _all(failed: JevBatchResponse) -> list[JevBatchResponse]:
+            return [
+                JevBatchResponse(
+                    node_id=nid,
+                    error=failed.error,
+                    denied=failed.denied,
+                    malformed=failed.malformed,
+                    timed_out=failed.timed_out,
+                )
+                for nid in node_ids
+            ]
+
+        try:
+            import httpx
+        except ImportError:  # pragma: no cover
+            return _all(
+                JevBatchResponse(node_id="*", error="httpx_missing", malformed=True)
+            )
+        try:
+            headers = self._headers()
+        except RuntimeError as exc:
+            return _all(JevBatchResponse(node_id="*", denied=True, error=str(exc)))
+        try:
+            with httpx.Client(timeout=self.timeout_s) as client:
+                resp = client.post(self.base_url, json=payload, headers=headers)
+        except Exception as exc:  # network / timeout
+            return _all(JevBatchResponse(node_id="*", timed_out=True, error=str(exc)))
+
+        if resp.status_code in (401, 403):
+            return _all(
+                JevBatchResponse(node_id="*", denied=True, error=f"http_{resp.status_code}")
+            )
+        if resp.status_code >= 400:
+            return _all(
+                JevBatchResponse(
+                    node_id="*", error=f"http_{resp.status_code}", malformed=True
+                )
+            )
+        try:
+            data = resp.json()
+        except Exception:
+            return _all(JevBatchResponse(node_id="*", malformed=True, error="invalid_json"))
+
+        if not isinstance(data, dict):
+            return _all(
+                JevBatchResponse(node_id="*", malformed=True, error="non_object_body")
+            )
+
+        usage = data.get("usage")
+        if isinstance(usage, dict):
+            self.last_usage = usage
+        model = data.get("model")
+        if isinstance(model, str):
+            self.last_response_model = model
+
+        answers = data.get("answers")
+        if not isinstance(answers, dict):
+            return _all(
+                JevBatchResponse(node_id="*", malformed=True, error="missing_answers")
+            )
+
+        return _split_batched_answers(answers, node_ids=node_ids)
+
 
 def _hydrate_questions(
     *, optional_network: bool, optional_reflect: bool
@@ -407,6 +520,58 @@ def _hydrate_questions(
             ),
         }
     return questions
+
+
+def _hydrate_questions_batched(
+    node_ids: list[str],
+    *,
+    optional_network: bool,
+    optional_reflect: bool,
+) -> dict[str, dict[str, Any]]:
+    """Prefix each hydrate question with ``{node_id}__`` for a multi-candidate POST."""
+    base = _hydrate_questions(
+        optional_network=optional_network, optional_reflect=optional_reflect
+    )
+    out: dict[str, dict[str, Any]] = {}
+    for nid in node_ids:
+        for qid, spec in base.items():
+            keyed = dict(spec)
+            # Keep criteria/instructions; annotate which candidate in instructions.
+            instr = str(keyed.get("instructions", ""))
+            keyed["instructions"] = f"[candidate {nid}] {instr}"
+            out[f"{nid}__{qid}"] = keyed
+    return out
+
+
+def _split_batched_answers(
+    answers: dict[str, Any], *, node_ids: list[str]
+) -> list[JevBatchResponse]:
+    """Split ``{node_id}__{qid}`` answer keys into per-node ``JevBatchResponse``."""
+    by_node: dict[str, dict[str, Any]] = {nid: {} for nid in node_ids}
+    for key, ans in answers.items():
+        if "__" not in str(key):
+            continue
+        nid, _, qid = str(key).partition("__")
+        if nid not in by_node or not qid:
+            continue
+        by_node[nid][qid] = ans
+
+    results: list[JevBatchResponse] = []
+    for nid in node_ids:
+        node_answers = by_node.get(nid) or {}
+        if not node_answers:
+            results.append(
+                JevBatchResponse(node_id=nid, malformed=True, error="missing_node_answers")
+            )
+            continue
+        mapped = _map_system_one_answers(node_answers)
+        if mapped is None:
+            results.append(
+                JevBatchResponse(node_id=nid, malformed=True, error="bad_answers")
+            )
+            continue
+        results.append(JevBatchResponse(node_id=nid, results=mapped))
+    return results
 
 
 def _admit_questions() -> dict[str, dict[str, Any]]:

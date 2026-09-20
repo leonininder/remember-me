@@ -4,6 +4,10 @@
 
 Local recall finds candidates. TypeSafe **Jev** gates include / stub / skip / promote — *after* retrieval, on a **redacted** set. Not a memory bank. A decision gate.
 
+### System One / intelligent if
+
+**Decision gate, not a chat LLM.** Jev (System One) answers typed Choice / Score / Noul only — it **cannot generate prose**. remember-me uses it after local recall to decide hydrate / stub / skip. See the [Cookbook](docs/COOKBOOK.md).
+
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status: PREVIEW](https://img.shields.io/badge/status-PREVIEW%20Pre--Skill-orange.svg)](SCORECARD.md)
@@ -18,7 +22,7 @@ remember-me demo
 remember-me bakeoff
 ```
 
-Offline by default (`FakeJev`). `HttpJev` exists as **scaffolding** (pin `jev-1.13.0`) until System One (`POST /v1/systemone`) is proven — do **not** treat cloud mode as working.
+Offline by default (`FakeJev`). `HttpJev` speaks System One (`POST /v1/systemone`, pin `jev-1.13.0`) and can **batch** multi-candidate hydrate into one POST — live mode still needs a key + pilot log; do **not** treat cloud as proven.
 
 ---
 
@@ -147,7 +151,7 @@ See [SECURITY.md](SECURITY.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 - **PREVIEW / Pre-Skill** — not a formal promoted skill. See [SCORECARD.md](SCORECARD.md) (~8.4–8.5 weighted, FakeJev evidence basis).
 - **Offline bake-off ≠ live proof.** `remember-me bakeoff` uses **FakeJev** (deterministic, no network). Published `bakeoff_metrics.json` must not be read as TypeSafe cloud latency or calibrated decision quality. See [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md) and [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md).
 - **No live acceleration claim.** We do **not** claim that Jev accelerates memory versus Hindsight or dump-all. Offline FakeJev precision deltas are **not** live proof. Any future win must be quality/token efficiency under measured live RTT — not “faster FakeJev.”
-- **HttpJev is scaffolding until proven.** Default path may not match public System One (`POST /v1/systemone`, `state` + typed `questions`). Do **not** advertise cloud mode as working without a successful redacted call log. See [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md).
+- **HttpJev contract fixed; live unproven.** Speaks public System One (`POST /v1/systemone`, `state` + typed `questions`; batched multi-candidate hydrate when possible). Do **not** advertise cloud mode as working without a successful redacted call log. See [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md).
 - **Gate layer, not a memory OS.** Non-goal: Mem0 / embedder / TEMPR-ranker replacement. Jev must not re-rank local candidates.
 - **Not a drop-in Claude / Codex / Hermes skill or plugin.** Library + CLI only; no official TypeSafe skill package. See [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md).
 - **No theater metrics.** No fake star counts, Fortune 500 logos, or invented production case studies. **FakeJev ≠ product proof.**
@@ -168,6 +172,9 @@ Regenerate committed metrics with `make bakeoff` if numbers drift. See [docs/BAK
 
 ## Further docs
 
+- [docs/COOKBOOK.md](docs/COOKBOOK.md) — Playground + System One hydrate cookbook
+- [docs/MISCONCEPTIONS.md](docs/MISCONCEPTIONS.md) — common mistakes
+- [docs/GETTING_STARTED_ZH.md](docs/GETTING_STARTED_ZH.md) — 繁中快速上手
 - [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md) — REAL / FAKE / CLAIMED
 - [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md) — run offline; HttpJev caveats
 - [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md) — Claude / Codex / Hermes positioning

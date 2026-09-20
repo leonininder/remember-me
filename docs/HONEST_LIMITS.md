@@ -68,7 +68,8 @@ remember-me `HttpJev` now matches public System One:
 - URL: `POST https://api.typesafe.ai/v1/systemone`
 - Body: `{model, state, questions}` → parses `{answers, model, usage?}`
 - Pin: `jev-1.13.0` (`JEV_MODEL_PIN`)
-- Egress: `query_hash` by default; no top-level `query`/`candidates`; raw preview opt-in
+- Egress: `query_hash` by default; no top-level `query`; raw preview opt-in
+- Hydrate: **batched multi-candidate** single POST when possible (`state.candidates` + `{node_id}__…` question keys); admit stays single-call
 
 **Live bake-off still not run** — needs `TYPESAFE_API_KEY` + redacted pilot log. Until then, do **not** claim cloud hydrate quality or latency wins. Contract gap is closed; integration proof is not.
 
@@ -126,6 +127,9 @@ remember-me’s intended niche (post-recall hydrate admit/skip) is **architectur
 
 ## Related docs
 
+- `docs/COOKBOOK.md` — Playground + hydrate cookbook
+- `docs/MISCONCEPTIONS.md` — common mistakes
+- `docs/GETTING_STARTED_ZH.md` — 繁中快速上手
 - `docs/RUNTIME_HOWTO.md` — FakeJev vs HttpJev
 - `docs/INTEGRATION_MATRIX.md` — Claude / Codex / Hermes
 - `docs/BAKEOFF_PLAN.md` — minimal live falsification plan

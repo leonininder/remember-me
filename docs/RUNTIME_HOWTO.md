@@ -87,7 +87,9 @@ client = HttpJev(
 | Response | `{model, answers{id: noul / choice / score}, usage?}` |
 | Model pin | `jev-1.13.0` (`JEV_MODEL_PIN`) |
 
-Egress: by default **no raw `query` string** — `state.query_hash` (sha256 hex) always; `query_preview` only if `include_raw_query=True`. Hydrate issues **one System One call per redacted candidate**.
+Egress: by default **no raw `query` string** — `state.query_hash` (sha256 hex) always; `query_preview` only if `include_raw_query=True`.
+
+**Batched multi-candidate hydrate (default):** when possible, `decide_hydrate` issues **one** `POST /v1/systemone` with `state.candidates` (redacted list) and questions keyed `{node_id}__hydrate_action` / `__need_for_next_turn` / `__still_matters_for_latest_ask` (plus optional network/reflect). Answers are split on `__` into per-node `JevBatchResponse`. Empty candidates → `[]`. Whole HTTP failure → every node gets the same timed_out/denied/malformed; a missing per-node slice → that node malformed, others OK. Set `batch_candidates=False` to fall back to per-node POSTs for debugging. `decide_admit` remains a **single-call** path.
 
 ### Remaining blockers before claiming “cloud works”
 
@@ -140,6 +142,7 @@ make bakeoff   # offline FakeJev metrics JSON
 
 - [x] HttpJev posts to `/v1/systemone`
 - [x] Request uses `state` + typed `questions` (noul/choice/score)
+- [x] Batched multi-candidate hydrate (one POST) when `batch_candidates=True`
 - [x] Response `answers` mapped into `JevBatchResponse` / GateDecision
 - [ ] At least one logged successful call with pin + usage tokens (redacted state)
 - [ ] Timeout / 401 / malformed chaos against **real** responses

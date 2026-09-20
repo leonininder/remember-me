@@ -26,7 +26,40 @@ def _cands():
     ]
 
 
-def _system_one_hydrate_answers():
+def _system_one_hydrate_answers_batched(node_ids=("a",)):
+    """Batched answers keyed ``{node_id}__{qid}``."""
+    answers = {}
+    for nid in node_ids:
+        answers[f"{nid}__hydrate_action"] = {
+            "type": "choice",
+            "choice": "hydrate_full",
+            "confidence": 0.91,
+            "probabilities": {
+                "hydrate_full": 0.91,
+                "stub_only": 0.05,
+                "skip": 0.02,
+                "promote_durable": 0.01,
+                "other": 0.01,
+            },
+        }
+        answers[f"{nid}__need_for_next_turn"] = {
+            "type": "score",
+            "score": 4,
+            "confidence": 0.9,
+        }
+        answers[f"{nid}__still_matters_for_latest_ask"] = {
+            "type": "noul",
+            "noul": 0.88,
+        }
+    return {
+        "model": JEV_MODEL_PIN,
+        "answers": answers,
+        "usage": {"input_tokens": 12, "output_tokens": 3},
+    }
+
+
+def _system_one_hydrate_answers_legacy():
+    """Per-candidate (unprefixed) answers for batch_candidates=False."""
     return {
         "model": JEV_MODEL_PIN,
         "answers": {
@@ -68,7 +101,7 @@ def test_http_jev_success_parse_system_one():
     client = HttpJev(api_key="test-key")
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = _system_one_hydrate_answers()
+    mock_resp.json.return_value = _system_one_hydrate_answers_batched()
     mock_client = _mock_client(mock_resp)
     with patch("httpx.Client", return_value=mock_client):
         out = client.decide_hydrate("q", redact_state(_cands()))
@@ -83,30 +116,44 @@ def test_http_jev_success_parse_system_one():
     assert client.last_usage == {"input_tokens": 12, "output_tokens": 3}
     assert client.last_response_model == JEV_MODEL_PIN
 
-    # POST URL + payload contract
+    # POST URL + batched payload contract
     assert mock_client.post.call_count == 1
     url = mock_client.post.call_args.args[0]
     assert url.endswith("/v1/systemone")
     payload = mock_client.post.call_args.kwargs["json"]
     assert "state" in payload and "questions" in payload
     assert "query" not in payload
-    assert "candidates" not in payload
+    assert "candidates" not in payload  # top-level forbidden
     assert "query_hash" in payload["state"]
     assert payload["state"]["query_hash"] == hashlib.sha256(b"q").hexdigest()
     assert "query_preview" not in payload["state"]
-    assert "candidate" in payload["state"]
+    assert "candidates" in payload["state"]
+    assert len(payload["state"]["candidates"]) == 1
     qs = payload["questions"]
-    assert qs["hydrate_action"]["type"] == "choice"
-    assert qs["need_for_next_turn"]["type"] == "score"
-    assert qs["still_matters_for_latest_ask"]["type"] == "noul"
+    assert qs["a__hydrate_action"]["type"] == "choice"
+    assert qs["a__need_for_next_turn"]["type"] == "score"
+    assert qs["a__still_matters_for_latest_ask"]["type"] == "noul"
     assert payload["model"] == JEV_MODEL_PIN
+
+
+def test_http_jev_stores_probabilities_in_raw():
+    client = HttpJev(api_key="k")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = _system_one_hydrate_answers_batched()
+    mock_client = _mock_client(mock_resp)
+    with patch("httpx.Client", return_value=mock_client):
+        out = client.decide_hydrate("q", redact_state(_cands()))
+    raw = out[0].results["hydrate_action"].raw
+    assert raw.get("probabilities", {}).get("hydrate_full") == 0.91
+    assert raw.get("type") == "choice"
 
 
 def test_http_jev_include_raw_query_opt_in():
     client = HttpJev(api_key="k", include_raw_query=True)
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = _system_one_hydrate_answers()
+    mock_resp.json.return_value = _system_one_hydrate_answers_batched()
     mock_client = _mock_client(mock_resp)
     with patch("httpx.Client", return_value=mock_client):
         client.decide_hydrate("raw-query-text", redact_state(_cands()))
@@ -221,7 +268,85 @@ def test_http_jev_rejects_legacy_decisions_shape():
     assert out[0].malformed
 
 
-def test_http_jev_per_candidate_posts():
+def test_http_jev_batched_multi_candidate_one_post():
+    cands = [
+        Candidate(
+            node_id="a",
+            kind=NodeKind.FACT,
+            tags=["t"],
+            degree=0,
+            last_touch=datetime.now(UTC),
+            local_score=0.8,
+            tokens_est=8,
+            content="x",
+        ),
+        Candidate(
+            node_id="b",
+            kind=NodeKind.FACT,
+            tags=["t"],
+            degree=0,
+            last_touch=datetime.now(UTC),
+            local_score=0.5,
+            tokens_est=4,
+            content="y",
+        ),
+    ]
+    client = HttpJev(api_key="k", batch_candidates=True)
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = _system_one_hydrate_answers_batched(("a", "b"))
+    mock_client = _mock_client(mock_resp)
+    with patch("httpx.Client", return_value=mock_client):
+        out = client.decide_hydrate("q", redact_state(cands))
+    assert len(out) == 2
+    assert mock_client.post.call_count == 1
+    assert not out[0].failed and not out[1].failed
+    assert out[0].node_id == "a" and out[1].node_id == "b"
+    payload = mock_client.post.call_args.kwargs["json"]
+    assert len(payload["state"]["candidates"]) == 2
+    assert "a__hydrate_action" in payload["questions"]
+    assert "b__hydrate_action" in payload["questions"]
+
+
+def test_http_jev_batch_partial_missing_node_malformed():
+    """One node missing answers → that node malformed; others OK."""
+    cands = [
+        Candidate(
+            node_id="a",
+            kind=NodeKind.FACT,
+            tags=["t"],
+            degree=0,
+            last_touch=datetime.now(UTC),
+            local_score=0.8,
+            tokens_est=8,
+            content="x",
+        ),
+        Candidate(
+            node_id="b",
+            kind=NodeKind.FACT,
+            tags=["t"],
+            degree=0,
+            last_touch=datetime.now(UTC),
+            local_score=0.5,
+            tokens_est=4,
+            content="y",
+        ),
+    ]
+    # Only node a answers present
+    body = _system_one_hydrate_answers_batched(("a",))
+    client = HttpJev(api_key="k")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = body
+    mock_client = _mock_client(mock_resp)
+    with patch("httpx.Client", return_value=mock_client):
+        out = client.decide_hydrate("q", redact_state(cands))
+    assert not out[0].failed
+    assert out[1].malformed
+    assert out[1].error == "missing_node_answers"
+
+
+def test_http_jev_batch_whole_fail_all_nodes():
     cands = [
         Candidate(
             node_id="a",
@@ -246,10 +371,57 @@ def test_http_jev_per_candidate_posts():
     ]
     client = HttpJev(api_key="k")
     mock_resp = MagicMock()
+    mock_resp.status_code = 403
+    mock_client = _mock_client(mock_resp)
+    with patch("httpx.Client", return_value=mock_client):
+        out = client.decide_hydrate("q", redact_state(cands))
+    assert len(out) == 2
+    assert all(r.denied for r in out)
+    assert mock_client.post.call_count == 1
+
+
+def test_http_jev_empty_candidates():
+    client = HttpJev(api_key="k")
+    mock_client = _mock_client(MagicMock())
+    with patch("httpx.Client", return_value=mock_client):
+        out = client.decide_hydrate("q", [])
+    assert out == []
+    assert mock_client.post.call_count == 0
+
+
+def test_http_jev_batch_candidates_false_per_node():
+    """Debug fallback: one POST per candidate with unprefixed questions."""
+    cands = [
+        Candidate(
+            node_id="a",
+            kind=NodeKind.FACT,
+            tags=["t"],
+            degree=0,
+            last_touch=datetime.now(UTC),
+            local_score=0.8,
+            tokens_est=8,
+            content="x",
+        ),
+        Candidate(
+            node_id="b",
+            kind=NodeKind.FACT,
+            tags=["t"],
+            degree=0,
+            last_touch=datetime.now(UTC),
+            local_score=0.5,
+            tokens_est=4,
+            content="y",
+        ),
+    ]
+    client = HttpJev(api_key="k", batch_candidates=False)
+    mock_resp = MagicMock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = _system_one_hydrate_answers()
+    mock_resp.json.return_value = _system_one_hydrate_answers_legacy()
     mock_client = _mock_client(mock_resp)
     with patch("httpx.Client", return_value=mock_client):
         out = client.decide_hydrate("q", redact_state(cands))
     assert len(out) == 2
     assert mock_client.post.call_count == 2
+    payload = mock_client.post.call_args_list[0].kwargs["json"]
+    assert "candidate" in payload["state"]
+    assert "hydrate_action" in payload["questions"]
