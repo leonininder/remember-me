@@ -10,7 +10,7 @@
 | Mode | Network | When |
 |------|---------|------|
 | **FakeJev** (default) | None | demo, bake-off, CI, pytest |
-| **HttpJev** (optional) | TypeSafe API | only with a real key **and** after fixing the API contract (see below) |
+| **HttpJev** (optional) | TypeSafe System One | only with a real `TYPESAFE_API_KEY` + live pilot (contract fixed; bake-off not yet run) |
 
 CLI always uses FakeJev today:
 
@@ -59,7 +59,7 @@ assert all(d.fail_closed for d in r.decisions)
 
 ---
 
-## HttpJev (scaffold — read before enabling)
+## HttpJev (System One contract — live bake-off still pending)
 
 ```python
 import os
@@ -69,21 +69,33 @@ from remember_me.pipeline import MemoryPipeline
 # Requires TYPESAFE_API_KEY in the environment. Never commit keys.
 client = HttpJev(
     api_key=os.environ.get("TYPESAFE_API_KEY"),
-    base_url="https://api.typesafe.ai/v1/jev",  # CURRENT DEFAULT — likely WRONG vs System One
+    # default base_url = https://api.typesafe.ai/v1/systemone
     model_pin="jev-1.13.0",
     timeout_s=5.0,
+    include_raw_query=False,  # David P1: query_hash only unless True
 )
 # pipe = MemoryPipeline(graph, client, top_k=5)
 ```
 
-### Known blockers before a live pilot
+### Contract (fixed 2026-09-20)
 
-1. **Endpoint:** public System One is `POST https://api.typesafe.ai/v1/systemone`, not `/v1/jev`.
-2. **Request shape:** official body is `{model, state, questions{id: {type, instructions, criteria?}}}`; HttpJev currently sends `{query, candidates, questions}` and parses `{decisions}`.
-3. **SDK alternative:** `pip install typesafe-sdk` / `@typesafe-ai/sdk` already speak System One; a thin adapter may be safer than inventing a parallel client.
-4. **No live logs in repo** — SCORECARD and bake-off are FakeJev-only.
+| Item | Value |
+|------|-------|
+| Endpoint | `POST https://api.typesafe.ai/v1/systemone` |
+| Auth | `Authorization: Bearer <TYPESAFE_API_KEY>` |
+| Body | `{model, state, questions{id: {type, instructions, criteria?}}}` |
+| Response | `{model, answers{id: noul / choice / score}, usage?}` |
+| Model pin | `jev-1.13.0` (`JEV_MODEL_PIN`) |
 
-Until those are fixed and a successful response is logged (redacted), treat HttpJev as **non-operational**.
+Egress: by default **no raw `query` string** — `state.query_hash` (sha256 hex) always; `query_preview` only if `include_raw_query=True`. Hydrate issues **one System One call per redacted candidate**.
+
+### Remaining blockers before claiming “cloud works”
+
+1. **No live key / pilot in this repo yet** — SCORECARD and bake-off remain FakeJev-only.
+2. Need at least one logged successful redacted call (pin + usage) before advertising cloud mode.
+3. Optional: chaos against real 401/403/429/timeout once a key exists.
+
+HttpJev **speaks** System One now; treat live mode as **unproven until key + pilot**, not as a broken client.
 
 ### Fail-closed behavior (intended)
 
@@ -126,9 +138,9 @@ make bakeoff   # offline FakeJev metrics JSON
 
 ## Sanity checklist before claiming “cloud works”
 
-- [ ] HttpJev posts to `/v1/systemone` (or documented successor)
-- [ ] Request uses `state` + typed `questions` (noul/choice/score)
-- [ ] Response `answers` mapped into `JevBatchResponse` / GateDecision
+- [x] HttpJev posts to `/v1/systemone`
+- [x] Request uses `state` + typed `questions` (noul/choice/score)
+- [x] Response `answers` mapped into `JevBatchResponse` / GateDecision
 - [ ] At least one logged successful call with pin + usage tokens (redacted state)
 - [ ] Timeout / 401 / malformed chaos against **real** responses
 - [ ] Live bake-off JSON committed separately from FakeJev metrics

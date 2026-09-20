@@ -56,25 +56,21 @@ Delta precision@k ≈ **+0.085**. Latency is **sub-millisecond local CPU**, not 
 |-------|--------|
 | Live TypeSafe Jev improves hydrate quality | **Unknown** — no live call logs in repo |
 | Jev accelerates memory (latency) | **Must not claim** — live Jev is typically ~70–500 ms (vendor/public writeups); offline bake-off cannot falsify this |
-| HttpJev works against production API | **Unproven** — code exists; **no live pilot**; see contract gap below |
+| HttpJev works against production API | **Contract fixed** (System One); **live still unproven** — no key/pilot logs yet |
 | Drop-in Claude / Codex / Hermes skill | **Not true today** — library + CLI only; no shipped agent skill/hooks package |
 | Replaces Mem0 / full memory OS | Explicit non-goal |
 | Community Jev = memory hydrate gate | Community mainly uses Jev for **context compaction / routing / triage**, not topology memory stores (see `INTEGRATION_MATRIX.md`) |
 
-### Critical contract gap (HttpJev)
+### HttpJev contract status (fixed 2026-09-20)
 
-remember-me `HttpJev` defaults to:
-
-- URL: `https://api.typesafe.ai/v1/jev`
-- Body shape: `{model, query, candidates, questions}` → expects `{decisions: [...]}`
-
-Public TypeSafe System One contract (docs / cookbooks / community writeups as of 2026-09):
+remember-me `HttpJev` now matches public System One:
 
 - URL: `POST https://api.typesafe.ai/v1/systemone`
-- Body shape: `{model, state, questions}` → `{answers, model, usage}`
-- Pin versions like `jev-1.13.0` / alias `jev-latest`
+- Body: `{model, state, questions}` → parses `{answers, model, usage?}`
+- Pin: `jev-1.13.0` (`JEV_MODEL_PIN`)
+- Egress: `query_hash` by default; no top-level `query`/`candidates`; raw preview opt-in
 
-**Until HttpJev is rewritten and logged against a real key, treat live cloud mode as scaffolding, not a working integration.**
+**Live bake-off still not run** — needs `TYPESAFE_API_KEY` + redacted pilot log. Until then, do **not** claim cloud hydrate quality or latency wins. Contract gap is closed; integration proof is not.
 
 ---
 
@@ -97,7 +93,7 @@ remember-me’s intended niche (post-recall hydrate admit/skip) is **architectur
 1. “Jev accelerates memory” / “faster than Hindsight” without a **live** bake-off JSON + call logs.
 2. Live p50/p95 latency numbers derived from FakeJev.
 3. “Official Claude/Codex/Hermes skill for remember-me” (none exists yet).
-4. Compatibility with TypeSafe API without fixing HttpJev contract + proving a successful response.
+4. Compatibility with TypeSafe API without proving a successful live response (contract is fixed; live log still required).
 5. Star counts, Fortune 500, or production case studies that do not exist.
 6. That FakeJev precision@k deltas generalize to live calibrated Jev.
 
@@ -114,7 +110,7 @@ remember-me’s intended niche (post-recall hydrate admit/skip) is **architectur
 
 ### Does not work today (or unproven)
 
-- Live HttpJev end-to-end against TypeSafe
+- Live HttpJev end-to-end against TypeSafe (client speaks System One; key + pilot missing)
 - Proven live latency / token / quality win vs Hindsight or dump-all
 - Drop-in agent skill for Claude Code / Codex / Hermes
 - Mac wiki cross-check from this research box (ListMachines / wiki path unavailable here)

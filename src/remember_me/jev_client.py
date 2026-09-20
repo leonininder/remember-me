@@ -1,7 +1,11 @@
-"""Jev client protocol: FakeJev (deterministic, CI) + HttpJev (optional cloud).
+"""Jev client protocol: FakeJev (deterministic, CI) + HttpJev (System One).
 
-Pin: jev-1.13.0. Failures surface as timed_out / denied / malformed — callers
-MUST fail-closed (see policy.map_hydrate_action).
+Pin: jev-1.13.0 via ``JEV_MODEL_PIN``. HttpJev posts to
+``POST /v1/systemone`` with ``state`` + typed ``questions`` and maps
+``answers`` (not a fictional ``/v1/jev`` or ``{decisions}`` shape).
+
+Failures surface as timed_out / denied / malformed — callers MUST
+fail-closed (see policy.map_hydrate_action).
 """
 
 from __future__ import annotations
@@ -25,6 +29,7 @@ from remember_me.types import (
     HydrateAction,
     JevBatchResponse,
     JevQuestionResult,
+    NetworkRoute,
     NodeKind,
     RedactedCandidate,
 )
@@ -210,25 +215,41 @@ class FakeJev:
 
 
 class HttpJev:
-    """Optional HTTP client for TypeSafe Jev. Requires TYPESAFE_API_KEY.
+    """HTTP client for TypeSafe System One (`POST /v1/systemone`).
 
-    Not used in CI. Failures set timed_out / denied / malformed for fail-closed.
+    Requires ``TYPESAFE_API_KEY``. Not used in CI. Failures set
+    ``timed_out`` / ``denied`` / ``malformed`` for fail-closed policy.
+
+    Egress (David P1): by default does **not** send the raw ``query`` string.
+    Always includes ``query_hash`` (sha256 hex of utf-8 query) in ``state``.
+    Set ``include_raw_query=True`` to also send ``query_preview`` (full query).
+
+    Answer mapping → ``JevQuestionResult``:
+    - Choice → value=choice str, confidence=confidence
+    - Score → value=score number, confidence=confidence
+    - Noul → value=bool(noul >= 0.5), confidence=noul (yes-probability)
     """
+
+    DEFAULT_BASE_URL = "https://api.typesafe.ai/v1/systemone"
 
     def __init__(
         self,
         *,
         api_key: str | None = None,
-        base_url: str = "https://api.typesafe.ai/v1/jev",
+        base_url: str = DEFAULT_BASE_URL,
         model_pin: str = JEV_MODEL_PIN,
         timeout_s: float = 5.0,
+        include_raw_query: bool = False,
     ) -> None:
         self.api_key = api_key or os.environ.get("TYPESAFE_API_KEY", "")
         self.base_url = base_url.rstrip("/")
         self.model_pin = model_pin
         self.timeout_s = timeout_s
+        self.include_raw_query = include_raw_query
         self.call_count = 0
         self.last_outbound: list[dict[str, Any]] = []
+        self.last_usage: dict[str, Any] | None = None
+        self.last_response_model: str | None = None
 
     def _headers(self) -> dict[str, str]:
         if not self.api_key:
@@ -236,8 +257,17 @@ class HttpJev:
         return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "X-Jev-Model": self.model_pin,
         }
+
+    @staticmethod
+    def _query_hash(query: str) -> str:
+        return hashlib.sha256(query.encode("utf-8")).hexdigest()
+
+    def _build_state(self, query: str, extra: dict[str, Any]) -> dict[str, Any]:
+        state: dict[str, Any] = {"query_hash": self._query_hash(query), **extra}
+        if self.include_raw_query:
+            state["query_preview"] = query
+        return state
 
     def decide_hydrate(
         self,
@@ -255,107 +285,189 @@ class HttpJev:
         assert_no_secrets(outbound)
         self.last_outbound = outbound
 
-        questions = [Q_HYDRATE_ACTION, Q_NEED_FOR_NEXT_TURN, Q_STILL_MATTERS]
-        if optional_network:
-            questions.append(Q_NETWORK_ROUTE)
-        if optional_reflect:
-            questions.append(Q_TRIGGER_REFLECT)
+        if not outbound:
+            return []
 
-        payload = {
-            "model": self.model_pin,
-            "query": query,
-            "candidates": outbound,
-            "questions": questions,
-        }
-        return self._post_batch(payload, node_ids=[o["node_id"] for o in outbound])
+        questions = _hydrate_questions(
+            optional_network=optional_network, optional_reflect=optional_reflect
+        )
+        results: list[JevBatchResponse] = []
+        for cand in outbound:
+            nid = str(cand["node_id"])
+            state = self._build_state(query, {"candidate": cand})
+            payload = {
+                "model": self.model_pin,
+                "state": state,
+                "questions": questions,
+            }
+            results.append(self._post_system_one(payload, node_id=nid))
+        return results
 
     def decide_admit(self, proposed: dict[str, Any]) -> JevBatchResponse:
         self.call_count += 1
         safe = {k: v for k, v in proposed.items() if k in {"node_id", "kind", "tags", "salience"}}
         assert_no_secrets(safe)
         self.last_outbound = [safe]
+        nid = str(proposed.get("node_id", "unknown"))
+        # state = proposed safe fields only (no user query / no raw content).
         payload = {
             "model": self.model_pin,
-            "proposed": safe,
-            "questions": [Q_ADMIT, Q_NODE_KIND],
+            "state": safe,
+            "questions": _admit_questions(),
         }
-        results = self._post_batch(payload, node_ids=[str(proposed.get("node_id", "unknown"))])
-        return results[0] if results else JevBatchResponse(
-            node_id=str(proposed.get("node_id", "unknown")),
-            error="empty_response",
-            malformed=True,
-        )
+        return self._post_system_one(payload, node_id=nid)
 
-    def _post_batch(self, payload: dict[str, Any], node_ids: list[str]) -> list[JevBatchResponse]:
+    def _post_system_one(self, payload: dict[str, Any], *, node_id: str) -> JevBatchResponse:
         try:
             import httpx
         except ImportError:  # pragma: no cover
-            return [
-                JevBatchResponse(node_id=nid, error="httpx_missing", malformed=True)
-                for nid in node_ids
-            ]
+            return JevBatchResponse(node_id=node_id, error="httpx_missing", malformed=True)
         try:
             headers = self._headers()
         except RuntimeError as exc:
-            return [
-                JevBatchResponse(node_id=nid, denied=True, error=str(exc)) for nid in node_ids
-            ]
+            return JevBatchResponse(node_id=node_id, denied=True, error=str(exc))
         try:
             with httpx.Client(timeout=self.timeout_s) as client:
                 resp = client.post(self.base_url, json=payload, headers=headers)
         except Exception as exc:  # network / timeout
-            return [
-                JevBatchResponse(node_id=nid, timed_out=True, error=str(exc)) for nid in node_ids
-            ]
+            return JevBatchResponse(node_id=node_id, timed_out=True, error=str(exc))
 
         if resp.status_code in (401, 403):
-            return [
-                JevBatchResponse(node_id=nid, denied=True, error=f"http_{resp.status_code}")
-                for nid in node_ids
-            ]
+            return JevBatchResponse(node_id=node_id, denied=True, error=f"http_{resp.status_code}")
         if resp.status_code >= 400:
-            return [
-                JevBatchResponse(node_id=nid, error=f"http_{resp.status_code}", malformed=True)
-                for nid in node_ids
-            ]
+            return JevBatchResponse(
+                node_id=node_id, error=f"http_{resp.status_code}", malformed=True
+            )
         try:
             data = resp.json()
         except Exception:
-            return [
-                JevBatchResponse(node_id=nid, malformed=True, error="invalid_json")
-                for nid in node_ids
-            ]
+            return JevBatchResponse(node_id=node_id, malformed=True, error="invalid_json")
 
-        # Expected shape: {"decisions": [{node_id, results: {qid: {value, confidence}}}]}
-        decisions = data.get("decisions")
-        if not isinstance(decisions, list):
-            return [
-                JevBatchResponse(node_id=nid, malformed=True, error="missing_decisions")
-                for nid in node_ids
-            ]
-        by_id = {d.get("node_id"): d for d in decisions if isinstance(d, dict)}
-        out: list[JevBatchResponse] = []
-        for nid in node_ids:
-            d = by_id.get(nid)
-            if not d:
-                out.append(JevBatchResponse(node_id=nid, malformed=True, error="missing_node"))
-                continue
-            results: dict[str, JevQuestionResult] = {}
-            raw_results = d.get("results") or {}
-            if not isinstance(raw_results, dict):
-                out.append(JevBatchResponse(node_id=nid, malformed=True, error="bad_results"))
-                continue
-            for qid, rr in raw_results.items():
-                if not isinstance(rr, dict) or "value" not in rr or "confidence" not in rr:
-                    out.append(JevBatchResponse(node_id=nid, malformed=True, error=f"bad_{qid}"))
-                    break
-                results[qid] = JevQuestionResult(
-                    question_id=qid,
-                    value=rr["value"],
-                    confidence=float(rr["confidence"]),
-                    raw=rr,
-                )
+        if not isinstance(data, dict):
+            return JevBatchResponse(node_id=node_id, malformed=True, error="non_object_body")
+
+        # Bake-off telemetry (last successful HTTP parse path).
+        usage = data.get("usage")
+        if isinstance(usage, dict):
+            self.last_usage = usage
+        model = data.get("model")
+        if isinstance(model, str):
+            self.last_response_model = model
+
+        answers = data.get("answers")
+        if not isinstance(answers, dict):
+            return JevBatchResponse(node_id=node_id, malformed=True, error="missing_answers")
+
+        mapped = _map_system_one_answers(answers)
+        if mapped is None:
+            return JevBatchResponse(node_id=node_id, malformed=True, error="bad_answers")
+        return JevBatchResponse(node_id=node_id, results=mapped)
+
+
+def _hydrate_questions(
+    *, optional_network: bool, optional_reflect: bool
+) -> dict[str, dict[str, Any]]:
+    actions = [a.value for a in HydrateAction]
+    questions: dict[str, dict[str, Any]] = {
+        Q_HYDRATE_ACTION: {
+            "type": "choice",
+            "instructions": (
+                "Choose the hydrate action for this redacted memory candidate "
+                "relative to the latest user ask (query_hash only unless preview present)."
+            ),
+            "criteria": actions,
+        },
+        Q_NEED_FOR_NEXT_TURN: {
+            "type": "score",
+            "instructions": (
+                "How needed is this candidate for answering the latest ask on the next turn?"
+            ),
+            "criteria": [1, 2, 3, 4, 5],
+        },
+        Q_STILL_MATTERS: {
+            "type": "noul",
+            "instructions": (
+                "Does this candidate still matter for the latest ask "
+                "(yes ≈ hydrate consideration; no ≈ safe to skip)?"
+            ),
+        },
+    }
+    if optional_network:
+        questions[Q_NETWORK_ROUTE] = {
+            "type": "choice",
+            "instructions": "Optional memory-network route for this candidate.",
+            "criteria": [r.value for r in NetworkRoute],
+        }
+    if optional_reflect:
+        questions[Q_TRIGGER_REFLECT] = {
+            "type": "noul",
+            "instructions": (
+                "Should the agent trigger a reflect/compaction pass "
+                "for this candidate?"
+            ),
+        }
+    return questions
+
+
+def _admit_questions() -> dict[str, dict[str, Any]]:
+    return {
+        Q_ADMIT: {
+            "type": "choice",
+            "instructions": "Should this proposed marker be admitted into the topology store?",
+            "criteria": [d.value for d in AdmitDecision],
+        },
+        Q_NODE_KIND: {
+            "type": "choice",
+            "instructions": "Classify the proposed marker kind.",
+            "criteria": [k.value for k in NodeKind],
+        },
+    }
+
+
+def _map_system_one_answers(
+    answers: dict[str, Any],
+) -> dict[str, JevQuestionResult] | None:
+    """Map System One ``answers`` dict → JevQuestionResult.
+
+    Noul confidence uses the raw yes-probability ``noul`` (not abs-scaled).
+    """
+    results: dict[str, JevQuestionResult] = {}
+    for qid, ans in answers.items():
+        if not isinstance(ans, dict):
+            return None
+        atype = ans.get("type")
+        try:
+            if atype == "choice":
+                if "choice" not in ans or "confidence" not in ans:
+                    return None
+                value: Any = ans["choice"]
+                confidence = float(ans["confidence"])
+            elif atype == "score":
+                if "score" not in ans or "confidence" not in ans:
+                    return None
+                value = ans["score"]
+                confidence = float(ans["confidence"])
+            elif atype == "noul":
+                if "noul" not in ans:
+                    return None
+                noul = float(ans["noul"])
+                value = noul >= 0.5
+                # Prefer confidence=noul (yes-probability) for policy thresholds.
+                confidence = noul
             else:
-                out.append(JevBatchResponse(node_id=nid, results=results))
-                continue
-        return out
+                return None
+            # Clamp confidence into [0, 1] for pydantic; malformed if out of range badly.
+            if confidence < 0.0 or confidence > 1.0:
+                # Allow slight float noise; hard reject otherwise.
+                if confidence < -0.01 or confidence > 1.01:
+                    return None
+                confidence = max(0.0, min(1.0, confidence))
+            results[qid] = JevQuestionResult(
+                question_id=qid,
+                value=value,
+                confidence=confidence,
+                raw=ans,
+            )
+        except (TypeError, ValueError):
+            return None
+    return results
