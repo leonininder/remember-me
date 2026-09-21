@@ -2,7 +2,7 @@
 
 **Status:** PREVIEW ONLY — NOT A FORMAL SKILL  
 **Card / freeze:** PS-REMEMBER-ME-2026-09-19 / freeze-2026-09-19-v1  
-**Scored:** 2026-09-19 (CST / Asia/Taipei); Phase 9.5 dual-gate refresh 2026-09-21; David adversarial 2026-09-21; **LIVE pilot 2026-09-22**  
+**Scored:** 2026-09-19 (CST / Asia/Taipei); Phase 9.5 dual-gate refresh 2026-09-21; David adversarial 2026-09-21; **LIVE pilot + enrich v2 2026-09-22**  
 **Package:** `/workspace/remember-me` v0.1.0 (`remember_me`)  
 **Evidence basis:** Offline FakeJev + pytest (offline green) + **LIVE HttpJev smoke/bake-off logs** (see `docs/reviews/LIVE_PILOT_2026-09-22.md`). FakeJev bake-off remains **NON-EVIDENCE** (conf ∝ local_score).
 
@@ -18,7 +18,7 @@
 | Verification | 15% | **8.5** | HTTP chaos (offline mock) + live 200s; remote CI on main **not claimed** |
 | Safety | 10% | **9.0** | ALLOWLIST EscalationRecord + GateAuditRecord + adversarial redact |
 | License | 10% | **9.0** | MIT; pydantic/httpx clean |
-| Maintainability | 10% | **8.0** | src layout + docs + CI workflow present; **do not claim CI green on main until remote green** |
+| Maintainability | 10% | **8.0** | Stale LIVE C=0.0/NON_PROMOTE section fixed 2026-09-22 post-David; CI workflow present — **do not claim remote green** |
 | **Weighted overall** | 100% | **~8.6** | Enrich v2 quality bars clear; **not ≥9.5**; acceleration still **not** supported (latency) |
 
 ### Weighted calculation
@@ -46,31 +46,38 @@ From `bakeoff_metrics.json` (k=5, n=50):
 
 ---
 
-## Bake-off snapshot (LIVE HttpJev) — EVIDENCE (quality claim fails)
+## Bake-off snapshot (LIVE HttpJev) — EVIDENCE (enrich v2 @ `b8749f4`)
 
-From `bakeoff_metrics_live.json` (2026-09-22, pin `jev-1.13.0`):
+From `bakeoff_metrics_live.json` after allowlisted enrich v2 (2026-09-22, pin `jev-1.13.0`, `include_raw_query=False`, T_ACCEPT/T_ESCALATE **0.85/0.55** held):
 
-| Mode | precision@k | recall@k | overshare_rate | p50 / p95 (ms) | fail_closed_rate | jev_calls |
-|------|------------:|---------:|---------------:|---------------:|-----------------:|----------:|
-| local_topk_stub (B) | ~0.387 | 0.98 | 0.04 | ~0.16 / ~0.22 | 0.0 | 0 |
-| jev_gated_live (C) | **0.0** | **0.0** | 0.0 | ~422 / ~509 | **0.0** | 49 |
+| Mode | precision@k | recall@k | overshare_rate | p50 / p95 (ms) | fail_closed_rate | escalate_rate | jev_calls |
+|------|------------:|---------:|---------------:|---------------:|-----------------:|--------------:|----------:|
+| local_topk_stub (B) | ~0.387 | 0.98 | 0.04 | ~0.2 / ~0.3 | 0.0 | 0 | 0 |
+| jev_gated_live (C) | **0.727** | (see pilot) | **0.00** | ~420 / ~498 | **0.0** | ~0.028 | 49 |
 
-Usage (C): ~99k input / ~23k output tokens. Details: `docs/reviews/LIVE_PILOT_2026-09-22.md`.
+**Pre-registered quality bars:** precision ≥ B−0.05 ≈0.337 → **PASS**; overshare ≤0.02 → **PASS**; fail_closed ≤0.05 → **PASS**.  
+**Label:** `PROMOTE_CANDIDATE` for those bars on `personal_prefs` only — **not** a ≥9.5 claim. Latency still ≫ B → **no acceleration**.
+
+Earlier same-day pilots (hash-only C=0.0; enrich v1 C≈0.174) are historical — see `LIVE_PILOT_2026-09-22.md` / `LIVE_PILOT_RECAL_2026-09-22.md`. Current evidence: `docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md`.
+
+Usage (C enrich v2): see live metrics JSON (~155k in / ~23k out class).
 
 ---
 
 ## Remaining blockers to honest ≥9.5
 
-1. Enrichment-first recal shipped (intent/length/stub_tags); live C precision ~0.174 still below pre-registered bar vs B — held-out calibration next, **without** lowering floors into noise  
-2. Live bake-off meeting pre-registered quality bars (today: **fails**)  
-3. Remote CI green on main (proof required; not claimed)  
+1. Remote CI green on `main` (push blocked until PAT has **workflow** scope; not claimed)  
+2. Independent human redact / allowlist review  
+3. David/Justin formal ≥9.5 (still REJECT on current packet)  
 4. Leon formal sign-off  
+5. Do **not** treat recovery-floor precision bar as ≥9.5 evidence; ontology may be fixture-tilted
 
 ---
 
 ## Verdict
 
-**Keep as Pre-Skill / PREVIEW.** Overall **~8.5** after live pilot; enrichment recal **NON_PROMOTE** (precision recovered but bars uncleared — see LIVE_PILOT_RECAL_2026-09-22).  
-Live **contract works**; acceleration / ≥9.5 narratives **REJECTED** on this evidence.
+**Keep as Pre-Skill / PREVIEW.** Overall **~8.6** after enrich v2 live bake-off.  
+**PROMOTE_CANDIDATE** for pre-registered quality bars only (`personal_prefs`).  
+Live **contract works**; quality bars **cleared** under redacted enrich; acceleration / ≥9.5 narratives still **REJECTED**.
 
-See [docs/reviews/LIVE_PILOT_2026-09-22.md](docs/reviews/LIVE_PILOT_2026-09-22.md) + [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).
+See [docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md](docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md) + [docs/reviews/DAVID_2026-09-22_ENRICH_V2.md](docs/reviews/DAVID_2026-09-22_ENRICH_V2.md) + [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).
