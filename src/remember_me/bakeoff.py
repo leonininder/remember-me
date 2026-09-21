@@ -1,22 +1,23 @@
-"""Offline bake-off: ``local_topk_stub`` vs FakeJev-gated hydrate (synthetic queries).
+"""Bake-off: ``local_topk_stub`` vs FakeJev-gated (offline) or HttpJev (live).
 
-NOT product evidence: FakeJev confidence correlates with ``local_score``; treat
-metrics as wiring/regression signals only — never as live TypeSafe / Hindsight proof.
+Offline FakeJev metrics are NON-EVIDENCE (conf ∝ local_score). Live HttpJev
+metrics go to ``bakeoff_metrics_live.json`` and must be labeled LIVE evidence.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 from remember_me.graph import TopologyGraph
-from remember_me.jev_client import FakeJev
+from remember_me.jev_client import FakeJev, HttpJev
 from remember_me.pipeline import MemoryPipeline
 from remember_me.retrieve import LocalCandidateRetriever
-from remember_me.types import Horizon, HydrateAction, Marker, NodeKind
+from remember_me.types import JEV_MODEL_PIN, Horizon, HydrateAction, Marker, NodeKind
 
 FIXTURES_DIR = Path(__file__).resolve().parents[2] / "fixtures" / "personal_prefs"
 
@@ -37,9 +38,13 @@ class BakeoffMetrics:
     recall_at_k: float
     overshare_rate: float
     mean_latency_ms: float
-    p95_latency_ms: float
-    mean_hydrated: float
-    jev_calls: int
+    p50_latency_ms: float = 0.0
+    p95_latency_ms: float = 0.0
+    mean_hydrated: float = 0.0
+    jev_calls: int = 0
+    fail_closed_rate: float = 0.0
+    jev_model: str | None = None
+    usage_tokens: dict[str, Any] = field(default_factory=dict)
 
 
 def load_markers(path: Path | None = None) -> TopologyGraph:
@@ -112,8 +117,6 @@ def run_local_topk_stub(
         t0 = time.perf_counter()
         cands = retriever.retrieve(case.query, top_k=k)
         ids = [c.node_id for c in cands]
-        # Stub-only: treat all retrieved as "hydrated" stubs
-        # (local top-k baseline; not commercial Hindsight).
         latencies.append((time.perf_counter() - t0) * 1000)
         p, r = _precision_recall(ids, case.relevant_ids, k)
         precs.append(p)
@@ -129,9 +132,11 @@ def run_local_topk_stub(
         recall_at_k=sum(recalls) / len(recalls) if recalls else 0.0,
         overshare_rate=sum(overshares) / len(overshares) if overshares else 0.0,
         mean_latency_ms=sum(latencies) / len(latencies) if latencies else 0.0,
+        p50_latency_ms=_percentile(latencies, 50),
         p95_latency_ms=_percentile(latencies, 95),
         mean_hydrated=sum(hydrated_counts) / len(hydrated_counts) if hydrated_counts else 0.0,
         jev_calls=0,
+        fail_closed_rate=0.0,
     )
 
 
@@ -146,6 +151,8 @@ def run_jev_gated(
     recalls: list[float] = []
     overshares: list[float] = []
     hydrated_counts: list[int] = []
+    fail_closed = 0
+    decision_n = 0
 
     for case in cases:
         t0 = time.perf_counter()
@@ -162,6 +169,10 @@ def run_jev_gated(
         over = len(set(ids) & set(case.overshare_ids))
         overshares.append(1.0 if over else 0.0)
         hydrated_counts.append(len(ids))
+        for d in result.decisions:
+            decision_n += 1
+            if d.fail_closed:
+                fail_closed += 1
 
     return BakeoffMetrics(
         mode="jev_gated",
@@ -170,9 +181,98 @@ def run_jev_gated(
         recall_at_k=sum(recalls) / len(recalls) if recalls else 0.0,
         overshare_rate=sum(overshares) / len(overshares) if overshares else 0.0,
         mean_latency_ms=sum(latencies) / len(latencies) if latencies else 0.0,
+        p50_latency_ms=_percentile(latencies, 50),
         p95_latency_ms=_percentile(latencies, 95),
         mean_hydrated=sum(hydrated_counts) / len(hydrated_counts) if hydrated_counts else 0.0,
         jev_calls=client.call_count,
+        fail_closed_rate=(fail_closed / decision_n) if decision_n else 0.0,
+        jev_model=client.model_pin,
+    )
+
+
+def run_jev_gated_live(
+    graph: TopologyGraph,
+    cases: list[QueryCase],
+    *,
+    k: int = 5,
+    timeout_s: float = 60.0,
+    api_key: str | None = None,
+) -> BakeoffMetrics:
+    """Live HttpJev path: retrieve → redact → System One → policy hydrate.
+
+    Requires ``TYPESAFE_API_KEY``. Prefer ``batch_candidates=True`` (HttpJev default).
+    On HTTP 429 the client fail-closes (timed_out); rate-limit is counted in fail_closed.
+    """
+    key = api_key or os.environ.get("TYPESAFE_API_KEY", "")
+    if not key:
+        raise RuntimeError("TYPESAFE_API_KEY required for live bake-off")
+
+    client = HttpJev(
+        api_key=key,
+        timeout_s=timeout_s,
+        batch_candidates=True,
+        model_pin=JEV_MODEL_PIN,
+    )
+    pipe = MemoryPipeline(graph, client, top_k=k)
+    latencies: list[float] = []
+    precs: list[float] = []
+    recalls: list[float] = []
+    overshares: list[float] = []
+    hydrated_counts: list[int] = []
+    fail_closed = 0
+    decision_n = 0
+    usage_acc: dict[str, int] = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+    }
+    rate_limited = 0
+
+    for case in cases:
+        t0 = time.perf_counter()
+        result = pipe.run(case.query, top_k=k)
+        ids = [
+            h.node_id
+            for h in result.hydrated
+            if h.action in (HydrateAction.HYDRATE_FULL, HydrateAction.STUB_ONLY)
+        ]
+        latencies.append((time.perf_counter() - t0) * 1000)
+        p, r = _precision_recall(ids, case.relevant_ids, k)
+        precs.append(p)
+        recalls.append(r)
+        over = len(set(ids) & set(case.overshare_ids))
+        overshares.append(1.0 if over else 0.0)
+        hydrated_counts.append(len(ids))
+        for d in result.decisions:
+            decision_n += 1
+            if d.fail_closed:
+                fail_closed += 1
+                if "429" in (d.reason or ""):
+                    rate_limited += 1
+        if client.last_usage and isinstance(client.last_usage, dict):
+            for tok_key in ("input_tokens", "output_tokens", "total_tokens"):
+                val = client.last_usage.get(tok_key)
+                if isinstance(val, (int, float)):
+                    usage_acc[tok_key] = usage_acc.get(tok_key, 0) + int(val)
+
+    usage_out: dict[str, Any] = {k: v for k, v in usage_acc.items() if v}
+    if rate_limited:
+        usage_out["rate_limited_decisions"] = rate_limited
+
+    return BakeoffMetrics(
+        mode="jev_gated_live",
+        n_queries=len(cases),
+        precision_at_k=sum(precs) / len(precs) if precs else 0.0,
+        recall_at_k=sum(recalls) / len(recalls) if recalls else 0.0,
+        overshare_rate=sum(overshares) / len(overshares) if overshares else 0.0,
+        mean_latency_ms=sum(latencies) / len(latencies) if latencies else 0.0,
+        p50_latency_ms=_percentile(latencies, 50),
+        p95_latency_ms=_percentile(latencies, 95),
+        mean_hydrated=sum(hydrated_counts) / len(hydrated_counts) if hydrated_counts else 0.0,
+        jev_calls=client.call_count,
+        fail_closed_rate=(fail_closed / decision_n) if decision_n else 0.0,
+        jev_model=client.last_response_model or client.model_pin,
+        usage_tokens=usage_out,
     )
 
 
@@ -204,11 +304,61 @@ def run_bakeoff(
             "p95_latency_ms": gated.p95_latency_ms - baseline.p95_latency_ms,
         },
         "notes": (
-            "Offline FakeJev bake-off. PREVIEW ONLY. "
+            "Offline FakeJev bake-off. PREVIEW ONLY / NON-EVIDENCE. "
             "Jev is decision gate after local retrieval — not the ranker."
         ),
     }
 
     out_path = out_path or Path("bakeoff_metrics.json")
+    out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return report
+
+
+def run_bakeoff_live(
+    *,
+    fixtures_dir: Path | None = None,
+    out_path: Path | None = None,
+    k: int = 5,
+    timeout_s: float = 60.0,
+) -> dict[str, Any]:
+    """Arms B (local_topk_stub) vs C (jev_gated_live). Writes bakeoff_metrics_live.json."""
+    if not os.environ.get("TYPESAFE_API_KEY"):
+        raise RuntimeError(
+            "TYPESAFE_API_KEY not set — refuse live bake-off (use FakeJev offline bakeoff)"
+        )
+
+    fixtures_dir = fixtures_dir or FIXTURES_DIR
+    graph = load_markers(fixtures_dir / "markers.json")
+    cases = load_queries(fixtures_dir / "queries.json")
+    if len(cases) < 50:
+        raise RuntimeError(f"expected >=50 queries, got {len(cases)}")
+
+    baseline = run_local_topk_stub(graph, cases, k=k)
+    gated = run_jev_gated_live(graph, cases, k=k, timeout_s=timeout_s)
+
+    report: dict[str, Any] = {
+        "label": "LIVE HttpJev evidence (not FakeJev)",
+        "k": k,
+        "n_queries": len(cases),
+        "fixtures": str(fixtures_dir),
+        "model_pin": JEV_MODEL_PIN,
+        "baseline": asdict(baseline),
+        "jev_gated_live": asdict(gated),
+        "deltas": {
+            "precision_at_k": gated.precision_at_k - baseline.precision_at_k,
+            "recall_at_k": gated.recall_at_k - baseline.recall_at_k,
+            "overshare_rate": gated.overshare_rate - baseline.overshare_rate,
+            "p50_latency_ms": gated.p50_latency_ms - baseline.p50_latency_ms,
+            "p95_latency_ms": gated.p95_latency_ms - baseline.p95_latency_ms,
+            "fail_closed_rate": gated.fail_closed_rate - baseline.fail_closed_rate,
+        },
+        "notes": (
+            "LIVE TypeSafe System One bake-off (HttpJev). "
+            "Arms: B=local_topk_stub vs C=jev_gated_live. "
+            "Do NOT confuse with FakeJev bakeoff_metrics.json."
+        ),
+    }
+
+    out_path = out_path or Path("bakeoff_metrics_live.json")
     out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report

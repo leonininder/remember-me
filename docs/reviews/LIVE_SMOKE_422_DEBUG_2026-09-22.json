@@ -1,0 +1,596 @@
+{
+  "batched": {
+    "status": 422,
+    "payload": {
+      "model": "jev-1.13.0",
+      "state": {
+        "query_hash": "f2b5c89000dbcf6d3fa75d5b26a55532dc075e77fb0004e2a4c6b59128189b8f",
+        "candidates": [
+          {
+            "node_id": "pref_theme",
+            "kind": "fact",
+            "tags": [
+              "prefs"
+            ],
+            "degree": 0,
+            "last_touch": "2026-09-21T23:10:37.520854Z",
+            "local_score": 0.9,
+            "tokens_est": 32
+          }
+        ]
+      },
+      "questions": {
+        "pref_theme__hydrate_action": {
+          "type": "choice",
+          "instructions": "[candidate pref_theme] Choose the hydrate action for this redacted memory candidate relative to the latest user ask (query_hash only unless preview present).",
+          "criteria": [
+            "hydrate_full",
+            "stub_only",
+            "skip",
+            "promote_durable",
+            "escalate_human",
+            "other"
+          ]
+        },
+        "pref_theme__need_for_next_turn": {
+          "type": "score",
+          "instructions": "[candidate pref_theme] How needed is this candidate for answering the latest ask on the next turn?",
+          "criteria": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "pref_theme__still_matters_for_latest_ask": {
+          "type": "noul",
+          "instructions": "[candidate pref_theme] Does this candidate still matter for the latest ask (yes \u2248 hydrate consideration; no \u2248 safe to skip)?"
+        }
+      }
+    },
+    "body": {
+      "detail": [
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__hydrate_action",
+            "choice",
+            "criteria"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": [
+            "hydrate_full",
+            "stub_only",
+            "skip",
+            "promote_durable",
+            "escalate_human",
+            "other"
+          ]
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            0,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 1
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            0,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 1
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            0,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 1
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            1,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 2
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            1,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 2
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            1,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 2
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            2,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 3
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            2,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 3
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            2,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 3
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            3,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 4
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            3,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 4
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            3,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 4
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            4,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 5
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            4,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 5
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "pref_theme__need_for_next_turn",
+            "score",
+            "criteria",
+            4,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 5
+        }
+      ]
+    }
+  },
+  "single": {
+    "status": 422,
+    "payload": {
+      "model": "jev-1.13.0",
+      "state": {
+        "query_hash": "f2b5c89000dbcf6d3fa75d5b26a55532dc075e77fb0004e2a4c6b59128189b8f",
+        "candidate": {
+          "node_id": "pref_theme",
+          "kind": "fact",
+          "tags": [
+            "prefs"
+          ],
+          "degree": 0,
+          "last_touch": "2026-09-21T23:10:37.520854Z",
+          "local_score": 0.9,
+          "tokens_est": 32
+        }
+      },
+      "questions": {
+        "hydrate_action": {
+          "type": "choice",
+          "instructions": "Choose the hydrate action for this redacted memory candidate relative to the latest user ask (query_hash only unless preview present).",
+          "criteria": [
+            "hydrate_full",
+            "stub_only",
+            "skip",
+            "promote_durable",
+            "escalate_human",
+            "other"
+          ]
+        },
+        "need_for_next_turn": {
+          "type": "score",
+          "instructions": "How needed is this candidate for answering the latest ask on the next turn?",
+          "criteria": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "still_matters_for_latest_ask": {
+          "type": "noul",
+          "instructions": "Does this candidate still matter for the latest ask (yes \u2248 hydrate consideration; no \u2248 safe to skip)?"
+        }
+      }
+    },
+    "body": {
+      "detail": [
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "hydrate_action",
+            "choice",
+            "criteria"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": [
+            "hydrate_full",
+            "stub_only",
+            "skip",
+            "promote_durable",
+            "escalate_human",
+            "other"
+          ]
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            0,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 1
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            0,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 1
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            0,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 1
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            1,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 2
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            1,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 2
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            1,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 2
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            2,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 3
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            2,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 3
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            2,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 3
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            3,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 4
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            3,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 4
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            3,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 4
+        },
+        {
+          "type": "string_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            4,
+            "str"
+          ],
+          "msg": "Input should be a valid string",
+          "input": 5
+        },
+        {
+          "type": "dict_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            4,
+            "dict[any,any]"
+          ],
+          "msg": "Input should be a valid dictionary",
+          "input": 5
+        },
+        {
+          "type": "list_type",
+          "loc": [
+            "body",
+            "questions",
+            "need_for_next_turn",
+            "score",
+            "criteria",
+            4,
+            "list[any]"
+          ],
+          "msg": "Input should be a valid list",
+          "input": 5
+        }
+      ]
+    }
+  },
+  "minimal": {
+    "status": 200,
+    "payload": {
+      "model": "jev-1.13.0",
+      "state": {
+        "text": "User preference: dark mode theme."
+      },
+      "questions": {
+        "urgent": {
+          "type": "noul",
+          "instructions": "Is this about a UI theme preference?"
+        }
+      }
+    },
+    "body": {
+      "model": "jev-1.13.0",
+      "answers": {
+        "urgent": {
+          "type": "noul",
+          "noul": 0.99
+        }
+      },
+      "usage": {
+        "input_tokens": 287,
+        "output_tokens": 20
+      }
+    }
+  }
+}

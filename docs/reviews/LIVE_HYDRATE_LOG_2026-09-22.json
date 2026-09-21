@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-09-21T23:13:38.818569Z",
+  "note": "Small sample of outbound redacted payload + answer summaries. No secrets.",
+  "endpoint": "https://api.typesafe.ai/v1/systemone",
+  "model_pin": "jev-1.13.0",
+  "response_model": "jev-1.13.0",
+  "usage": {
+    "input_tokens": 756,
+    "output_tokens": 119
+  },
+  "latency_ms": 473.82,
+  "outbound_redacted": {
+    "state_keys": [
+      "query_hash",
+      "candidates"
+    ],
+    "query_hash": "8e2283741dfe398af3af61cfeee27eed8fee826dbea4f5d4dd0c7e79a8e7a47d",
+    "candidates": [
+      {
+        "node_id": "pref_lang",
+        "kind": "fact",
+        "tags": [
+          "prefs",
+          "locale"
+        ],
+        "degree": 1,
+        "last_touch": "2026-09-21T23:13:38.344635Z",
+        "local_score": 0.85,
+        "tokens_est": 24
+      }
+    ],
+    "question_ids": [
+      "pref_lang__hydrate_action",
+      "pref_lang__need_for_next_turn",
+      "pref_lang__still_matters_for_latest_ask"
+    ],
+    "criteria_shapes": {
+      "hydrate_action": "dict[str,str]",
+      "need_for_next_turn": "list[str] low\u2192high",
+      "still_matters_for_latest_ask": "noul (no criteria)"
+    },
+    "score_criteria_sample": [
+      "not needed for next turn",
+      "slightly helpful if space allows",
+      "moderately needed for a good answer",
+      "strongly needed; answer weak without it",
+      "critical for next turn"
+    ],
+    "choice_criteria_keys": [
+      "hydrate_full",
+      "stub_only",
+      "skip",
+      "promote_durable",
+      "escalate_human",
+      "other"
+    ]
+  },
+  "answers_summary": [
+    {
+      "node_id": "pref_lang",
+      "failed": false,
+      "malformed": false,
+      "denied": false,
+      "answers": {
+        "hydrate_action": {
+          "value": "stub_only",
+          "confidence": 0.23
+        },
+        "need_for_next_turn": {
+          "value": 1.94,
+          "confidence": 0.0
+        },
+        "still_matters_for_latest_ask": {
+          "value": true,
+          "confidence": 0.53
+        }
+      }
+    }
+  ],
+  "score_indexing_note": "Live need_for_next_turn score appears continuous on ~[0, n_levels) (fractional index into ordered string criteria), not discrete 1..5 ints. Policy stores float(need); FakeJev still emits ints 1..5 offline."
+}

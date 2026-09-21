@@ -1,0 +1,49 @@
+{
+  "label": "LIVE HttpJev evidence (not FakeJev)",
+  "k": 5,
+  "n_queries": 50,
+  "fixtures": "/workspace/remember-me/fixtures/personal_prefs",
+  "model_pin": "jev-1.13.0",
+  "baseline": {
+    "mode": "local_topk_stub",
+    "n_queries": 50,
+    "precision_at_k": 0.38666666666666666,
+    "recall_at_k": 0.98,
+    "overshare_rate": 0.04,
+    "mean_latency_ms": 0.17476229695603251,
+    "p50_latency_ms": 0.1594540080986917,
+    "p95_latency_ms": 0.22085197269916534,
+    "mean_hydrated": 3.6,
+    "jev_calls": 0,
+    "fail_closed_rate": 0.0,
+    "jev_model": null,
+    "usage_tokens": {}
+  },
+  "jev_gated_live": {
+    "mode": "jev_gated_live",
+    "n_queries": 50,
+    "precision_at_k": 0.0,
+    "recall_at_k": 0.0,
+    "overshare_rate": 0.0,
+    "mean_latency_ms": 417.32514290022664,
+    "p50_latency_ms": 422.33698698692024,
+    "p95_latency_ms": 509.29886201629415,
+    "mean_hydrated": 0.02,
+    "jev_calls": 49,
+    "fail_closed_rate": 0.0,
+    "jev_model": "jev-1.13.0",
+    "usage_tokens": {
+      "input_tokens": 99350,
+      "output_tokens": 22869
+    }
+  },
+  "deltas": {
+    "precision_at_k": -0.38666666666666666,
+    "recall_at_k": -0.98,
+    "overshare_rate": -0.04,
+    "p50_latency_ms": 422.17753297882155,
+    "p95_latency_ms": 509.078010043595,
+    "fail_closed_rate": 0.0
+  },
+  "notes": "LIVE TypeSafe System One bake-off (HttpJev). Arms: B=local_topk_stub vs C=jev_gated_live. Do NOT confuse with FakeJev bakeoff_metrics.json."
+}

@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from remember_me.bakeoff import run_bakeoff
+from remember_me.bakeoff import run_bakeoff, run_bakeoff_live
 from remember_me.graph import TopologyGraph
 from remember_me.jev_client import FakeJev
 from remember_me.pipeline import DualGatePipeline, MemoryPipeline
@@ -98,6 +98,30 @@ def cmd_demo(args: argparse.Namespace) -> int:
 
 
 def cmd_bakeoff(args: argparse.Namespace) -> int:
+    live = bool(getattr(args, "live", False))
+    if live:
+        import os
+
+        if not os.environ.get("TYPESAFE_API_KEY"):
+            print(
+                "ERROR: --live requires TYPESAFE_API_KEY in the environment "
+                "(refusing to run live bake-off).",
+                file=sys.stderr,
+            )
+            return 2
+        out = Path(args.out)
+        if out.name == "bakeoff_metrics.json":
+            out = Path("bakeoff_metrics_live.json")
+        report = run_bakeoff_live(out_path=out, k=args.k)
+        # Redact any accidental key leak from printed JSON (defensive).
+        dumped = json.dumps(report, indent=2)
+        key = os.environ.get("TYPESAFE_API_KEY", "")
+        if key and key in dumped:
+            dumped = dumped.replace(key, "[REDACTED]")
+        print(dumped)
+        print(f"\nWrote LIVE metrics → {out.resolve()}", file=sys.stderr)
+        return 0
+
     out = Path(args.out)
     report = run_bakeoff(out_path=out, k=args.k)
     print(json.dumps(report, indent=2))
@@ -139,9 +163,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     dd.set_defaults(func=cmd_demo, dual=True)
 
-    b = sub.add_parser("bakeoff", help="Run offline 50-query bake-off → metrics JSON")
+    b = sub.add_parser(
+        "bakeoff",
+        help="Run 50-query bake-off → metrics JSON (add --live for HttpJev)",
+    )
     b.add_argument("--out", default="bakeoff_metrics.json", help="Output JSON path")
     b.add_argument("--k", type=int, default=5, help="precision@k cutoff")
+    b.add_argument(
+        "--live",
+        action="store_true",
+        help=(
+            "LIVE HttpJev bake-off (requires TYPESAFE_API_KEY); "
+            "writes bakeoff_metrics_live.json by default (does not overwrite FakeJev JSON)"
+        ),
+    )
     b.set_defaults(func=cmd_bakeoff)
 
     s = sub.add_parser("score-report", help="Print SCORECARD.md (PREVIEW)")

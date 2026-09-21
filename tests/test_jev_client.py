@@ -126,3 +126,33 @@ def test_fake_jev_fanout_one_call_multi_candidate():
         assert "hydrate_action" in r.results
         assert "need_for_next_turn" in r.results
         assert "still_matters_for_latest_ask" in r.results
+
+
+def test_hydrate_questions_live_criteria_shape():
+    """System One: Choice criteria=dict; Score criteria=list[str] (not ints)."""
+    from remember_me.jev_client import (
+        NEED_FOR_NEXT_TURN_LEVELS,
+        _admit_questions,
+        _emit_questions,
+        _hydrate_questions,
+        _writeback_questions,
+    )
+
+    hq = _hydrate_questions(optional_network=True, optional_reflect=True)
+    assert isinstance(hq["hydrate_action"]["criteria"], dict)
+    assert "hydrate_full" in hq["hydrate_action"]["criteria"]
+    assert isinstance(hq["need_for_next_turn"]["criteria"], list)
+    assert hq["need_for_next_turn"]["criteria"] == list(NEED_FOR_NEXT_TURN_LEVELS)
+    assert all(isinstance(x, str) for x in hq["need_for_next_turn"]["criteria"])
+    assert isinstance(hq["memory_network"]["criteria"], dict)
+
+    aq = _admit_questions()
+    assert isinstance(aq["admit"]["criteria"], dict)
+    assert isinstance(aq["node_kind"]["criteria"], dict)
+
+    eq = _emit_questions()
+    assert isinstance(eq["emit_action"]["criteria"], dict)
+
+    wq = _writeback_questions()
+    assert isinstance(wq["writeback_action"]["criteria"], dict)
+    assert all(isinstance(x, str) for x in wq["writeback_need"]["criteria"])

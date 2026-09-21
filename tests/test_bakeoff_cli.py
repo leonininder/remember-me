@@ -47,3 +47,11 @@ def test_cli_bakeoff(tmp_path: Path, capsys, monkeypatch):
 def test_cli_score_report_missing(tmp_path: Path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert main(["score-report", "--scorecard", "missing.md"]) == 1
+
+
+def test_cli_bakeoff_live_refuses_without_key(monkeypatch, capsys):
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    rc = main(["bakeoff", "--live", "--out", "bakeoff_metrics_live.json"])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "TYPESAFE_API_KEY" in err

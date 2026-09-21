@@ -131,7 +131,12 @@ def test_http_jev_success_parse_system_one():
     assert len(payload["state"]["candidates"]) == 1
     qs = payload["questions"]
     assert qs["a__hydrate_action"]["type"] == "choice"
+    assert isinstance(qs["a__hydrate_action"]["criteria"], dict)
+    assert "hydrate_full" in qs["a__hydrate_action"]["criteria"]
     assert qs["a__need_for_next_turn"]["type"] == "score"
+    assert isinstance(qs["a__need_for_next_turn"]["criteria"], list)
+    assert all(isinstance(x, str) for x in qs["a__need_for_next_turn"]["criteria"])
+    assert 2 <= len(qs["a__need_for_next_turn"]["criteria"]) <= 10
     assert qs["a__still_matters_for_latest_ask"]["type"] == "noul"
     assert payload["model"] == JEV_MODEL_PIN
 
@@ -223,7 +228,10 @@ def test_http_jev_admit_success():
     assert payload["state"]["node_id"] == "n"
     assert "query" not in payload
     assert payload["questions"]["admit"]["type"] == "choice"
+    assert isinstance(payload["questions"]["admit"]["criteria"], dict)
+    assert "admit" in payload["questions"]["admit"]["criteria"]
     assert payload["questions"]["node_kind"]["type"] == "choice"
+    assert isinstance(payload["questions"]["node_kind"]["criteria"], dict)
 
 
 def test_http_jev_500_malformed():
@@ -453,6 +461,7 @@ def test_http_jev_decide_emit_payload_shape_mocked():
     payload = mock_client.post.call_args.kwargs["json"]
     assert payload["state"]["sink"] == "audit_log"
     assert "emit_action" in payload["questions"]
+    assert isinstance(payload["questions"]["emit_action"]["criteria"], dict)
     assert "content" not in payload["state"]
 
 
@@ -482,4 +491,7 @@ def test_http_jev_decide_writeback_payload_shape_mocked():
     payload = mock_client.post.call_args.kwargs["json"]
     assert payload["state"]["target"] == "wiki_stage"
     assert "writeback_action" in payload["questions"]
+    assert isinstance(payload["questions"]["writeback_action"]["criteria"], dict)
+    assert isinstance(payload["questions"]["writeback_need"]["criteria"], list)
+    assert all(isinstance(x, str) for x in payload["questions"]["writeback_need"]["criteria"])
     assert "body" not in payload["state"]

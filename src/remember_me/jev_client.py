@@ -389,7 +389,11 @@ class HttpJev:
         include_raw_query: bool = False,
         batch_candidates: bool = True,
     ) -> None:
-        self.api_key = api_key or os.environ.get("TYPESAFE_API_KEY", "")
+        # Distinguish None (fall back to env) from explicit "" (force no key).
+        if api_key is None:
+            self.api_key = os.environ.get("TYPESAFE_API_KEY", "")
+        else:
+            self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model_pin = model_pin
         self.timeout_s = timeout_s
@@ -691,10 +695,91 @@ class HttpJev:
 
 
 
+
+def _choice_criteria(descriptions: dict[str, str]) -> dict[str, str | None]:
+    """System One Choice criteria: ``{option_key: description_or_null}`` (not a list)."""
+    return dict(descriptions)
+
+
+# Closed taxonomies → human-readable Choice descriptions (live API contract).
+_HYDRATE_ACTION_CRITERIA: dict[str, str] = {
+    HydrateAction.HYDRATE_FULL.value: (
+        "Hydrate the full local body for this candidate; high need and on-topic for the ask."
+    ),
+    HydrateAction.STUB_ONLY.value: (
+        "Keep only a stub/summary; do not load the full body this turn."
+    ),
+    HydrateAction.SKIP.value: "Skip this candidate entirely for this turn.",
+    HydrateAction.PROMOTE_DURABLE.value: (
+        "Promote toward durable horizon while considering hydrate."
+    ),
+    HydrateAction.ESCALATE_HUMAN.value: (
+        "Mid-band uncertainty — escalate to a human before hydrating."
+    ),
+    HydrateAction.OTHER.value: "None of the closed actions clearly apply.",
+}
+
+_NETWORK_ROUTE_CRITERIA: dict[str, str] = {
+    NetworkRoute.WORLD.value: "Route via world / external knowledge network.",
+    NetworkRoute.EXPERIENCE.value: "Route via experience / episodic network.",
+    NetworkRoute.OBSERVATION.value: "Route via observation / sensing network.",
+    NetworkRoute.OPINION.value: "Route via opinion / preference network.",
+    NetworkRoute.SKIP.value: "Do not route to a memory network.",
+}
+
+_ADMIT_CRITERIA: dict[str, str] = {
+    AdmitDecision.ADMIT.value: "Admit the proposed marker into the topology store.",
+    AdmitDecision.REJECT.value: "Reject the proposed marker; do not store.",
+    AdmitDecision.DEFER.value: "Defer the admit decision for later review.",
+}
+
+_NODE_KIND_CRITERIA: dict[str, str] = {
+    NodeKind.FACT.value: "Factual statement or preference marker.",
+    NodeKind.EPISODE.value: "Episodic / event memory.",
+    NodeKind.PROCEDURE.value: "Procedure or how-to marker.",
+    NodeKind.ARTIFACT.value: "Artifact / document reference.",
+    NodeKind.EDGE.value: "Edge / relation marker.",
+}
+
+_EMIT_ACTION_CRITERIA: dict[str, str] = {
+    EmitAction.ALLOW_EMIT.value: "Allow egress of this redacted payload.",
+    EmitAction.DENY_EMIT.value: "Deny egress; keep payload local.",
+    EmitAction.BLOCK.value: "Block egress (synonym of deny_emit).",
+    EmitAction.REDACT_FURTHER.value: "Require further redaction before emit.",
+    EmitAction.ESCALATE_HUMAN.value: "Escalate emit decision to a human.",
+    EmitAction.OTHER.value: "None of the closed emit actions clearly apply.",
+}
+
+_WRITEBACK_ACTION_CRITERIA: dict[str, str] = {
+    WritebackAction.ALLOW_WRITEBACK.value: "Allow durable LTM / wiki / bank writeback.",
+    WritebackAction.DENY_WRITEBACK.value: "Deny durable writeback.",
+    WritebackAction.STAGE_ONLY.value: "Stage only; do not commit to durable store yet.",
+    WritebackAction.ESCALATE_HUMAN.value: "Escalate writeback decision to a human.",
+    WritebackAction.OTHER.value: "None of the closed writeback actions clearly apply.",
+}
+
+# Score criteria: ordered list of 2–10 string level descriptions (low → high).
+NEED_FOR_NEXT_TURN_LEVELS: list[str] = [
+    "not needed for next turn",
+    "slightly helpful if space allows",
+    "moderately needed for a good answer",
+    "strongly needed; answer weak without it",
+    "critical for next turn",
+]
+
+WRITEBACK_NEED_LEVELS: list[str] = [
+    "not needed for long-term memory quality",
+    "nice to have but optional",
+    "useful durable marker",
+    "important for future recall quality",
+    "critical for LTM / wiki quality",
+]
+
+
+
 def _hydrate_questions(
     *, optional_network: bool, optional_reflect: bool
 ) -> dict[str, dict[str, Any]]:
-    actions = [a.value for a in HydrateAction]
     questions: dict[str, dict[str, Any]] = {
         Q_HYDRATE_ACTION: {
             "type": "choice",
@@ -702,14 +787,15 @@ def _hydrate_questions(
                 "Choose the hydrate action for this redacted memory candidate "
                 "relative to the latest user ask (query_hash only unless preview present)."
             ),
-            "criteria": actions,
+            "criteria": _choice_criteria(_HYDRATE_ACTION_CRITERIA),
         },
         Q_NEED_FOR_NEXT_TURN: {
             "type": "score",
             "instructions": (
-                "How needed is this candidate for answering the latest ask on the next turn?"
+                "How needed is this candidate for answering the latest ask on the next turn? "
+                "Levels are ordered low→high."
             ),
-            "criteria": [1, 2, 3, 4, 5],
+            "criteria": list(NEED_FOR_NEXT_TURN_LEVELS),
         },
         Q_STILL_MATTERS: {
             "type": "noul",
@@ -723,7 +809,7 @@ def _hydrate_questions(
         questions[Q_NETWORK_ROUTE] = {
             "type": "choice",
             "instructions": "Optional memory-network route for this candidate.",
-            "criteria": [r.value for r in NetworkRoute],
+            "criteria": _choice_criteria(_NETWORK_ROUTE_CRITERIA),
         }
     if optional_reflect:
         questions[Q_TRIGGER_REFLECT] = {
@@ -793,12 +879,12 @@ def _admit_questions() -> dict[str, dict[str, Any]]:
         Q_ADMIT: {
             "type": "choice",
             "instructions": "Should this proposed marker be admitted into the topology store?",
-            "criteria": [d.value for d in AdmitDecision],
+            "criteria": _choice_criteria(_ADMIT_CRITERIA),
         },
         Q_NODE_KIND: {
             "type": "choice",
             "instructions": "Classify the proposed marker kind.",
-            "criteria": [k.value for k in NodeKind],
+            "criteria": _choice_criteria(_NODE_KIND_CRITERIA),
         },
     }
 
@@ -812,7 +898,7 @@ def _emit_questions() -> dict[str, dict[str, Any]]:
                 "allow_emit only when safe and on-topic; otherwise deny_emit, "
                 "redact_further, or escalate_human."
             ),
-            "criteria": [a.value for a in EmitAction],
+            "criteria": _choice_criteria(_EMIT_ACTION_CRITERIA),
         },
         Q_LEAK_RISK: {
             "type": "noul",
@@ -837,12 +923,15 @@ def _writeback_questions() -> dict[str, dict[str, Any]]:
                 "Choose the durable writeback action for this redacted proposed marker. "
                 "allow_writeback only when safe; mid uncertainty → escalate_human."
             ),
-            "criteria": [a.value for a in WritebackAction],
+            "criteria": _choice_criteria(_WRITEBACK_ACTION_CRITERIA),
         },
         Q_WRITEBACK_NEED: {
             "type": "score",
-            "instructions": "How needed is this durable write for long-term memory quality?",
-            "criteria": [1, 2, 3, 4, 5],
+            "instructions": (
+                "How needed is this durable write for long-term memory quality? "
+                "Levels are ordered low→high."
+            ),
+            "criteria": list(WRITEBACK_NEED_LEVELS),
         },
         Q_WRITEBACK_STILL_SAFE: {
             "type": "noul",
@@ -860,6 +949,8 @@ def _map_system_one_answers(
     """Map System One ``answers`` dict → JevQuestionResult.
 
     Noul confidence uses the raw yes-probability ``noul`` (not abs-scaled).
+    Score ``value`` is the raw numeric ``score`` from the API (level index into
+    the ordered string criteria — verify live responses for 0- vs 1-based).
     """
     results: dict[str, JevQuestionResult] = {}
     for qid, ans in answers.items():

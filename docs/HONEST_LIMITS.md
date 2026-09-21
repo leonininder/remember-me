@@ -145,3 +145,16 @@ remember-me’s intended niche (post-recall hydrate admit/skip) is **architectur
 - `docs/INTEGRATION_MATRIX.md` — Claude / Codex / Hermes
 - `docs/BAKEOFF_PLAN.md` — minimal live falsification plan
 - `docs/README_LIMITATIONS_DRAFT.md` — draft README merge text
+
+
+---
+
+## LIVE pilot 2026-09-22 (HttpJev) — honest
+
+**REAL:** System One hydrate/emit succeed after Choice `criteria`→dict and Score `criteria`→ordered string levels. Smoke + 50-query live bake-off logs under `docs/reviews/` and `bakeoff_metrics_live.json`. Model pin `jev-1.13.0` echoed; usage tokens recorded; fail_closed_rate 0.0 (no 429 this run).
+
+**NOT proven:** “Jev accelerates memory.” Live arm C vs B: p95 latency **+~509 ms**, precision@k **−0.387** (near-total `skip` under 0.85/0.55 bands with hash-only state). That **falsifies** acceleration on this fixture/threshold setup.
+
+**Still FAKE / NON-EVIDENCE:** Offline FakeJev `bakeoff_metrics.json` numbers.
+
+**Do not claim:** ≥9.5 overall, beat-Hindsight, or remote Actions green without proof.

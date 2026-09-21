@@ -2,9 +2,9 @@
 
 **Status:** PREVIEW ONLY — NOT A FORMAL SKILL  
 **Card / freeze:** PS-REMEMBER-ME-2026-09-19 / freeze-2026-09-19-v1  
-**Scored:** 2026-09-19 (CST / Asia/Taipei); Phase 9.5 dual-gate refresh 2026-09-21; **David adversarial correction 2026-09-21**  
+**Scored:** 2026-09-19 (CST / Asia/Taipei); Phase 9.5 dual-gate refresh 2026-09-21; David adversarial 2026-09-21; **LIVE pilot 2026-09-22**  
 **Package:** `/workspace/remember-me` v0.1.0 (`remember_me`)  
-**Evidence basis:** Offline FakeJev + pytest (138 passed). **No live TypeSafe pilot. FakeJev bake-off is NOT product evidence** (conf ∝ local_score).
+**Evidence basis:** Offline FakeJev + pytest (**140 passed**) + **LIVE HttpJev smoke/bake-off logs** (see `docs/reviews/LIVE_PILOT_2026-09-22.md`). FakeJev bake-off remains **NON-EVIDENCE** (conf ∝ local_score).
 
 ---
 
@@ -12,63 +12,65 @@
 
 | Dimension | Weight | Score | Notes |
 |-----------|-------:|------:|-------|
-| Evidence | 20% | **7.5** | David correction: FakeJev bake-off labeled non-evidence; no live Jev call logs |
+| Evidence | 20% | **8.0** | Live smoke + `bakeoff_metrics_live.json` committed; quality claim **fails** (precision Δ negative) |
 | Goal fit | 20% | **9.0** | Dual egress + escalate_human + no-rerank; Jev ≠ store ≠ ranker |
-| Runtime | 15% | **8.0** | CLI dual demo + fan-out defaults; HttpJev still unproven live |
-| Verification | 15% | **8.5** | Real HttpJev HTTP chaos (401/403/429/timeout/malformed) + allowlist tests; remote CI on main not yet claimed |
-| Safety | 10% | **9.0** | Positive ALLOWLIST EscalationRecord + GateAuditRecord store + adversarial redact |
+| Runtime | 15% | **8.5** | Live System One hydrate/emit succeed on pin `jev-1.13.0`; CLI `bakeoff --live` |
+| Verification | 15% | **8.5** | HTTP chaos (offline mock) + live 200s; remote CI on main **not claimed** |
+| Safety | 10% | **9.0** | ALLOWLIST EscalationRecord + GateAuditRecord + adversarial redact |
 | License | 10% | **9.0** | MIT; pydantic/httpx clean |
-| Maintainability | 10% | **8.0** | src layout + docs + `.github/workflows/ci.yml` present; **do not claim CI green on main until remote green** |
-| **Weighted overall** | 100% | **~8.2** | David adversarial ≈8.2; **not ≥9.5** |
+| Maintainability | 10% | **8.0** | src layout + docs + CI workflow present; **do not claim CI green on main until remote green** |
+| **Weighted overall** | 100% | **~8.5** | Live contract works; **not ≥9.5**; acceleration **falsified** on this pilot |
 
 ### Weighted calculation
 
 ```text
-0.20×7.5 + 0.20×9.0 + 0.15×8.0 + 0.15×8.5 + 0.10×9.0 + 0.10×9.0 + 0.10×8.0
-= 1.50 + 1.80 + 1.20 + 1.275 + 0.90 + 0.90 + 0.80
-= 8.375 ≈ 8.2–8.4 (report **~8.2** per David correction)
+0.20×8.0 + 0.20×9.0 + 0.15×8.5 + 0.15×8.5 + 0.10×9.0 + 0.10×9.0 + 0.10×8.0
+= 1.60 + 1.80 + 1.275 + 1.275 + 0.90 + 0.90 + 0.80
+= 8.55 ≈ **~8.5**
 ```
 
-Honesty note: Evidence cut to **7.5** because FakeJev conf∝local_score bake-off must not be read as product proof. Safety up on allowlist + persistent audit. **Do not advertise ≥9.0 overall or ≥9.5.**
+Honesty note: Evidence rises above 7.5 **only** because real live logs are committed. Live bake-off **does not** support “Jev accelerates memory” (latency↑, precision↓ under current thresholds + hash-only state). **Do not advertise ≥9.5.**
 
 ---
 
 ## Bake-off snapshot (offline FakeJev) — NON-EVIDENCE
 
-From `bakeoff_metrics.json` (k=5, n=50) — regenerate via `make bakeoff`:
+From `bakeoff_metrics.json` (k=5, n=50):
 
 | Mode | precision@k | recall@k | overshare_rate | p95 latency (ms) | jev_calls |
 |------|------------:|---------:|---------------:|-----------------:|----------:|
 | local_topk_stub | ~0.387 | 0.98 | 0.04 | ~0.22 | 0 |
 | jev_gated | ~0.472 | 0.97 | 0.04 | ~0.35 | 49 |
 
-**NON-EVIDENCE label:** FakeJev heuristic **correlates with `local_score`**; Δ precision is a wiring/regression signal only — **not** live TypeSafe proof and **not** a Hindsight comparison.
+**NON-EVIDENCE:** FakeJev conf ∝ `local_score`.
 
 ---
 
-## Phase 9.5 offline closes (2026-09-21)
+## Bake-off snapshot (LIVE HttpJev) — EVIDENCE (quality claim fails)
 
-- Dual-gate egress + escalate_human + FANOUT_DEFAULTS + no-rerank
-- **HttpJev HTTP chaos** (httpx mock): 401/403/429+Retry-After/timeout/malformed → fail-closed
-- **Persistent GateAuditRecord** (JSONL/SQLite) — no secrets/bodies
-- **EscalationRecord positive ALLOWLIST** (no proposed_summary free text; hash-only fingerprint)
-- Adversarial redaction (keys/emails/long bodies/tag+node_id side-channels)
-- Docs: see `docs/REVIEW_PACKET_ADDENDUM_AUDIT_CHAOS.md`
+From `bakeoff_metrics_live.json` (2026-09-22, pin `jev-1.13.0`):
+
+| Mode | precision@k | recall@k | overshare_rate | p50 / p95 (ms) | fail_closed_rate | jev_calls |
+|------|------------:|---------:|---------------:|---------------:|-----------------:|----------:|
+| local_topk_stub (B) | ~0.387 | 0.98 | 0.04 | ~0.16 / ~0.22 | 0.0 | 0 |
+| jev_gated_live (C) | **0.0** | **0.0** | 0.0 | ~422 / ~509 | **0.0** | 49 |
+
+Usage (C): ~99k input / ~23k output tokens. Details: `docs/reviews/LIVE_PILOT_2026-09-22.md`.
 
 ---
 
 ## Remaining blockers to honest ≥9.5
 
-1. Live TypeSafe hydrate/emit call logs (pin `jev-1.13.0`)  
-2. Remote CI green on main (workflow file exists; do not claim until remote green)  
-3. Dual-track bake-off under live RTT (not FakeJev)  
+1. Policy / state enrichment so live Choice confidences are useful under redaction (current bands → near-total `skip`)  
+2. Live bake-off meeting pre-registered quality bars (today: **fails**)  
+3. Remote CI green on main (proof required; not claimed)  
 4. Leon formal sign-off  
 
 ---
 
 ## Verdict
 
-**Keep as Pre-Skill / PREVIEW.** Overall **~8.2** after David adversarial correction.  
-**REJECT** ≥9.5 / acceleration / beat-Hindsight narratives on this evidence.
+**Keep as Pre-Skill / PREVIEW.** Overall **~8.5** after live pilot.  
+Live **contract works**; acceleration / ≥9.5 narratives **REJECTED** on this evidence.
 
-See [docs/REVIEW_PACKET.md](docs/REVIEW_PACKET.md) + [docs/REVIEW_PACKET_ADDENDUM_AUDIT_CHAOS.md](docs/REVIEW_PACKET_ADDENDUM_AUDIT_CHAOS.md).
+See [docs/reviews/LIVE_PILOT_2026-09-22.md](docs/reviews/LIVE_PILOT_2026-09-22.md) + [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).
