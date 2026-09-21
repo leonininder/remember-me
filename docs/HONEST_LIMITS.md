@@ -11,6 +11,17 @@ Offline FakeJev bake-off shows a **synthetic gate** can filter candidates and nu
 
 ---
 
+
+## FakeJev bake-off = NON-EVIDENCE (David 2026-09-21)
+
+FakeJev confidence is **heuristically correlated with `local_score`** (`≈ 0.45 + 0.5×local_score + noise`).
+Therefore:
+
+- Precision@k deltas from `local_topk_stub` vs `jev_gated` are **wiring / regression signals only**.
+- Do **not** cite bake-off JSON as product-market proof, live TypeSafe proof, or a Hindsight win.
+- Baseline mode string is **`local_topk_stub`** — not the commercial Hindsight product.
+
+
 ## REAL (implemented + verified offline)
 
 | Item | Evidence |

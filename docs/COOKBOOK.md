@@ -84,7 +84,7 @@ Application policy owns the floors — **confidence ≠ permission to act**. rem
 | Band | Confidence | Policy action |
 |------|------------|---------------|
 | **High** | ≥ **0.85** | Accept Choice → `hydrate_full` / `promote_durable` (within taxonomy) |
-| **Mid** | **0.55–0.85** | Escalate → `stub_only` (never auto full hydrate) |
+| **Mid** | **0.55–0.85** | **`escalate_human`** + EscalationRecord (never auto full hydrate) |
 | **Low** | < **0.55** | `skip` |
 | Fail | timeout / 401–403 / malformed | **Fail-closed** → `skip` (optional local stub-only for top-k) |
 
@@ -133,8 +133,33 @@ Chinese-language community writeups (e.g. blogs such as **wangruofeng007.com**) 
 
 ---
 
+
+---
+
+## 6. Dual-gate egress (emit / writeback)
+
+**Local candidates first. Jev never ranks. Jev only admits.**
+
+```python
+from remember_me import DualGatePipeline, FakeJev, TopologyGraph
+
+pipe = DualGatePipeline(TopologyGraph(), FakeJev(), top_k=5)
+dual = pipe.run_dual(
+    "What is my UI theme preference?",
+    egress_summary="Redacted UI preference summary for the agent channel.",
+)
+print([d.action for d in dual.ingress.decisions])
+print(dual.egress.decision.action if dual.egress else None)
+```
+
+- Emit Choice: `allow_emit` | `deny_emit`/`block` | `escalate_human` | `redact_further`
+- Writeback Choice: `allow_writeback` | `deny_writeback` | `stage_only` | `escalate_human`
+- Fail-closed on errors → deny (never silent allow). See [DUAL_GATE.md](DUAL_GATE.md).
+
+
 ## Related
 
+- [DUAL_GATE.md](DUAL_GATE.md) — dual-gate egress + escalate_human
 - [MISCONCEPTIONS.md](MISCONCEPTIONS.md) — common mistakes
 - [GETTING_STARTED_ZH.md](GETTING_STARTED_ZH.md) — 繁中快速上手
 - [HONEST_LIMITS.md](HONEST_LIMITS.md) — REAL / FAKE / CLAIMED

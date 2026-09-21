@@ -79,3 +79,15 @@ Both redact before send and expose `last_outbound` for audit assertions.
 ## Package
 
 Import: `remember_me` · CLI: `remember-me`
+
+
+## Dual-gate (Phase 9.5)
+
+Local candidates first. Jev never ranks. Jev only admits.
+
+- Ingress hydrate: mid-band → `escalate_human` + `EscalationRecord`
+- Egress: `EmitEgressGate.decide_emit` / `WritebackGate.evaluate`
+- Fan-out: `FANOUT_DEFAULTS` (`fanout.py`)
+- No-rerank: candidate order + `local_score` immutable through Jev (`assert_no_rerank`)
+
+See `docs/DUAL_GATE.md` and `docs/PHASE_9_5_PLAN.md`.

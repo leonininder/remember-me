@@ -135,3 +135,98 @@ def test_observe_admit_reject_raises():
     pipe = MemoryPipeline(TopologyGraph(), FakeJev(force_deny=True))
     with pytest.raises(PermissionError):
         pipe.observe(node_id="nope", content="x", require_admit=True)
+
+
+def test_emit_egress_gate_calls_jev_and_redacts():
+    from remember_me.gates import EmitEgressGate
+
+    client = FakeJev(confidence_override=0.9)
+    gate = EmitEgressGate(client)
+    d = gate.evaluate(
+        "audit_log",
+        {"proposed_summary": "prefs only", "node_id": "e1", "content": "SHOULD_STRIP"},
+    )
+    assert client.call_count == 1
+    assert gate.jev_call_count == 1
+    assert "content" not in gate.last_outbound
+    assert d.action.value in ("allow_emit", "deny_emit", "escalate_human", "redact_further")
+
+
+def test_writeback_gate_fail_closed_on_timeout():
+    from remember_me.gates import WritebackGate
+    from remember_me.types import WritebackAction
+
+    gate = WritebackGate(FakeJev(force_timeout=True))
+    d = gate.evaluate(
+        "graph_durable",
+        {"node_id": "n1", "kind": "fact", "tags": ["preference"], "salience": 0.8},
+    )
+    assert d.fail_closed
+    assert d.action == WritebackAction.DENY_WRITEBACK
+
+
+def test_observe_require_writeback_blocks_silent_durable():
+    import pytest
+
+    from remember_me.gates import WritebackGate
+
+    client = FakeJev(force_deny=True)
+    pipe = MemoryPipeline(
+        TopologyGraph(), client, writeback_gate=WritebackGate(client)
+    )
+    with pytest.raises(PermissionError, match="writeback"):
+        pipe.observe(
+            node_id="blocked",
+            content="x",
+            require_writeback=True,
+        )
+
+
+def test_pipeline_collects_escalations_list():
+    g = TopologyGraph()
+    g.observe(
+        node_id="m",
+        content="preference theme",
+        tags=["preference", "theme"],
+        salience=0.6,
+    )
+    # Mid-band confidence → escalate_human + EscalationRecord
+    client = FakeJev(confidence_override=0.7, action_override=HydrateAction.HYDRATE_FULL)
+    pipe = MemoryPipeline(g, client)
+    result = pipe.run("theme preference")
+    assert result.escalate_human_count >= 1
+    assert result.escalations
+    assert all(e.source_gate == "hydrate" for e in result.escalations)
+
+
+def test_pipeline_default_path_unchanged_without_egress_gates():
+    g = TopologyGraph()
+    g.observe(node_id="p", content="preference locale", tags=["locale"], salience=0.95)
+    client = FakeJev(confidence_override=0.99)
+    pipe = MemoryPipeline(g, client)
+    assert pipe.emit_gate is None
+    assert pipe.writeback_gate is None
+    result = pipe.run("locale preference")
+    assert result.jev_called is True
+
+
+def test_run_egress_and_dual_gate_pipeline():
+    from remember_me.pipeline import DualGatePipeline
+    from remember_me.types import EmitAction
+
+    g = TopologyGraph()
+    g.observe(node_id="p", content="preference ui", tags=["ui"], salience=0.9)
+    pipe = DualGatePipeline(g, FakeJev(confidence_override=0.95), top_k=3)
+    dual = pipe.run_dual(
+        "ui preference",
+        egress_summary="Redacted UI preference summary for channel.",
+    )
+    assert dual.ingress.jev_called
+    assert dual.egress is not None
+    assert dual.egress.jev_called
+    assert dual.egress.decision.action in (
+        EmitAction.ALLOW_EMIT,
+        EmitAction.DENY_EMIT,
+        EmitAction.ESCALATE_HUMAN,
+        EmitAction.REDACT_FURTHER,
+    )

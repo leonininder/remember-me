@@ -1,23 +1,32 @@
-"""End-to-end pipeline: observe → retrieve → redact → jev → hydrate.
+"""End-to-end pipeline: observe → retrieve → redact → jev → hydrate (+ optional egress).
 
-Orphan hydrations (nodes not in candidate set) are forbidden.
+Orphan hydrations forbidden. Jev never re-ranks candidates.
+Local candidates first. Jev never ranks. Jev only admits.
 """
 
 from __future__ import annotations
 
-from remember_me.gates import MemoryGate, RetainAdmitGate
+from typing import Any
+
+from remember_me.fanout import FANOUT_DEFAULTS, FanOutDefaults
+from remember_me.gates import EmitEgressGate, MemoryGate, RetainAdmitGate, WritebackGate
 from remember_me.graph import TopologyGraph
 from remember_me.jev_client import FakeJev, JevClient
+from remember_me.policy import assert_no_rerank
 from remember_me.redact import redact_state
 from remember_me.retrieve import LocalCandidateRetriever
 from remember_me.types import (
     AdmitDecision,
+    DualGateResult,
+    EgressResult,
+    EscalationRecord,
     Horizon,
     HydrateAction,
     HydratedNode,
     Marker,
     NodeKind,
     PipelineResult,
+    WritebackAction,
 )
 
 
@@ -30,10 +39,14 @@ class MemoryPipeline:
         client: JevClient | None = None,
         *,
         top_k: int = 8,
-        optional_network: bool = False,
-        optional_reflect: bool = False,
+        optional_network: bool | None = None,
+        optional_reflect: bool | None = None,
         fail_closed_top_k: int = 0,
+        fanout: FanOutDefaults | None = None,
+        emit_gate: EmitEgressGate | None = None,
+        writeback_gate: WritebackGate | None = None,
     ) -> None:
+        self.fanout = fanout or FANOUT_DEFAULTS
         self.graph = graph or TopologyGraph()
         self.client = client or FakeJev()
         self.retriever = LocalCandidateRetriever(self.graph, top_k=top_k)
@@ -42,8 +55,11 @@ class MemoryPipeline:
             optional_network=optional_network,
             optional_reflect=optional_reflect,
             fail_closed_top_k=fail_closed_top_k,
+            fanout=self.fanout,
         )
         self.admit_gate = RetainAdmitGate(self.client)
+        self.emit_gate = emit_gate
+        self.writeback_gate = writeback_gate
 
     def observe(
         self,
@@ -55,8 +71,9 @@ class MemoryPipeline:
         tags: list[str] | None = None,
         salience: float = 0.5,
         require_admit: bool = False,
+        require_writeback: bool = False,
     ) -> Marker:
-        """Write a marker; optionally run retain/admit gate first."""
+        """Write a marker; optionally run retain/admit and/or writeback gates first."""
         if require_admit:
             admit = self.admit_gate.evaluate(
                 node_id=node_id, kind=kind, tags=tags, salience=salience
@@ -64,6 +81,25 @@ class MemoryPipeline:
             if admit.decision != AdmitDecision.ADMIT:
                 raise PermissionError(f"admit rejected: {admit.decision} ({admit.reason})")
             kind = admit.kind
+        if require_writeback:
+            wb_gate = self.writeback_gate or WritebackGate(self.client)
+            wb = wb_gate.evaluate(
+                "graph_durable",
+                {
+                    "node_id": node_id,
+                    "kind": kind.value if isinstance(kind, NodeKind) else str(kind),
+                    "tags": list(tags or []),
+                    "salience": salience,
+                    "horizon": horizon.value,
+                },
+            )
+            if wb.action not in (
+                WritebackAction.ALLOW_WRITEBACK,
+                WritebackAction.STAGE_ONLY,
+            ):
+                raise PermissionError(
+                    f"writeback rejected: {wb.action} ({wb.reason})"
+                )
         return self.graph.observe(
             node_id=node_id,
             content=content,
@@ -74,8 +110,9 @@ class MemoryPipeline:
         )
 
     def run(self, query: str, *, top_k: int | None = None) -> PipelineResult:
-        """retrieve → redact → jev → hydrate. Jev is always called when candidates exist."""
+        """retrieve → redact → jev → hydrate. Candidate order / local_score immutable."""
         candidates = self.retriever.retrieve(query, top_k=top_k)
+        order_snapshot = list(candidates)
         redacted = redact_state(candidates)
         if not candidates:
             return PipelineResult(
@@ -86,22 +123,31 @@ class MemoryPipeline:
                 hydrated=[],
                 jev_called=False,
                 fail_closed_count=0,
+                escalate_human_count=0,
+                escalations=[],
             )
 
         decisions = self.gate.evaluate(query, candidates)
-        # MemoryGate always invokes Jev when candidates are non-empty.
+        # No-rerank invariant: gate must not permute candidates or mutate local_score.
+        assert_no_rerank(order_snapshot, candidates)
         jev_called = self.gate.jev_call_count > 0
         allowed_ids = {c.node_id for c in candidates}
         by_cand = {c.node_id: c for c in candidates}
         hydrated: list[HydratedNode] = []
         fail_closed = 0
+        escalations: list[EscalationRecord] = []
+        escalate_count = 0
         for d in decisions:
             if d.fail_closed:
                 fail_closed += 1
+            if d.escalation is not None:
+                escalations.append(d.escalation)
+            if d.action == HydrateAction.ESCALATE_HUMAN:
+                escalate_count += 1
             if d.node_id not in allowed_ids:
-                # Orphan hydration forbidden.
                 continue
-            if d.action == HydrateAction.SKIP:
+            if d.action in (HydrateAction.SKIP, HydrateAction.ESCALATE_HUMAN):
+                # escalate_human: surface on decisions/escalations; do not auto-hydrate full.
                 continue
             marker = self.graph.get(d.node_id)
             c = by_cand[d.node_id]
@@ -134,6 +180,7 @@ class MemoryPipeline:
                 if d.action == HydrateAction.PROMOTE_DURABLE and marker:
                     self.graph.promote(d.node_id, Horizon.DURABLE)
 
+        # Survivors keep candidate relative order (no Jev-driven reorder).
         return PipelineResult(
             query=query,
             candidates=candidates,
@@ -142,4 +189,63 @@ class MemoryPipeline:
             hydrated=hydrated,
             jev_called=jev_called,
             fail_closed_count=fail_closed,
+            escalate_human_count=escalate_count,
+            escalations=escalations,
         )
+
+    def run_egress(
+        self,
+        proposed_text: str,
+        context: dict[str, Any] | None = None,
+        *,
+        sink: str = "agent_channel",
+    ) -> EgressResult:
+        """Egress gate for a redacted proposed summary (demo / dual-gate)."""
+        gate = self.emit_gate or EmitEgressGate(self.client)
+        decision = gate.decide_emit(proposed_text, context, sink=sink)
+        summary = (proposed_text or "").strip()
+        if len(summary) > 500:
+            summary = summary[:497] + "..."
+        return EgressResult(
+            proposed_text_redacted=summary,
+            context=dict(context or {}),
+            decision=decision,
+            jev_called=gate.jev_call_count > 0,
+        )
+
+    def run_dual(
+        self,
+        query: str,
+        *,
+        top_k: int | None = None,
+        egress_summary: str | None = None,
+        egress_sink: str = "agent_channel",
+    ) -> DualGateResult:
+        """Ingress hydrate then optional egress emit (demo helper)."""
+        ingress = self.run(query, top_k=top_k)
+        egress = None
+        if egress_summary is not None:
+            egress = self.run_egress(
+                egress_summary,
+                {
+                    "query_hash_hint": query[:32],
+                    "hydrated_ids": [h.node_id for h in ingress.hydrated],
+                },
+                sink=egress_sink,
+            )
+        return DualGateResult(ingress=ingress, egress=egress)
+
+
+class DualGatePipeline(MemoryPipeline):
+    """MemoryPipeline with emit + writeback gates enabled by default."""
+
+    def __init__(
+        self,
+        graph: TopologyGraph | None = None,
+        client: JevClient | None = None,
+        **kwargs: Any,
+    ) -> None:
+        client = client or FakeJev()
+        kwargs.setdefault("emit_gate", EmitEgressGate(client))
+        kwargs.setdefault("writeback_gate", WritebackGate(client))
+        super().__init__(graph, client, **kwargs)

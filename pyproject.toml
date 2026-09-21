@@ -38,9 +38,9 @@ dev = [
 remember-me = "remember_me.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/leon/remember-me"
-Documentation = "https://github.com/leon/remember-me#readme"
-Issues = "https://github.com/leon/remember-me/issues"
+Homepage = "https://github.com/leonininder/remember-me"
+Documentation = "https://github.com/leonininder/remember-me#readme"
+Issues = "https://github.com/leonininder/remember-me/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/remember_me"]

@@ -1,6 +1,6 @@
 """Core types for topology graph memory markers and Jev decision payloads.
 
-Jev is a calibrated decision gate — not a store and not a similarity ranker.
+Local candidates first. Jev never ranks. Jev only admits.
 """
 
 from __future__ import annotations
@@ -31,12 +31,34 @@ class NodeKind(StrEnum):
 
 
 class HydrateAction(StrEnum):
-    """Closed Choice taxonomy for post-recall hydrate decisions."""
+    """Closed Choice taxonomy for post-recall hydrate (ingress) decisions."""
 
     HYDRATE_FULL = "hydrate_full"
     STUB_ONLY = "stub_only"
     SKIP = "skip"
     PROMOTE_DURABLE = "promote_durable"
+    ESCALATE_HUMAN = "escalate_human"
+    OTHER = "other"
+
+
+class EmitAction(StrEnum):
+    """Closed Choice for egress emit (leave-local boundary)."""
+
+    ALLOW_EMIT = "allow_emit"
+    DENY_EMIT = "deny_emit"
+    BLOCK = "block"  # synonym of deny_emit (original dual-gate taxonomy)
+    REDACT_FURTHER = "redact_further"
+    ESCALATE_HUMAN = "escalate_human"
+    OTHER = "other"
+
+
+class WritebackAction(StrEnum):
+    """Closed Choice for durable LTM / wiki writeback."""
+
+    ALLOW_WRITEBACK = "allow_writeback"
+    DENY_WRITEBACK = "deny_writeback"
+    STAGE_ONLY = "stage_only"
+    ESCALATE_HUMAN = "escalate_human"
     OTHER = "other"
 
 
@@ -58,6 +80,18 @@ class AdmitDecision(StrEnum):
     DEFER = "defer"
 
 
+class EscalationRecord(BaseModel):
+    """Structured human/policy handoff (never silent mid-band)."""
+
+    node_id: str
+    source_gate: str  # hydrate | emit | writeback | admit
+    band: str = "mid"  # mid | fail_closed | policy | conflict
+    confidence: float = 0.0
+    proposed_action: str = ""
+    reason: str = ""
+    redacted_snapshot: dict[str, Any] = Field(default_factory=dict)
+
+
 class Marker(BaseModel):
     """Topology node marker. Body lives at content_ref; never sent to Jev."""
 
@@ -74,9 +108,7 @@ class Marker(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_touch: datetime = Field(default_factory=lambda: datetime.now(UTC))
     degree: int = Field(default=0, ge=0)
-    # Local body for fixture / demo only; never included in redacted outbound state.
     content: str | None = None
-    # Optional secret field used only in tests to prove redaction.
     secret: str | None = None
 
     @field_validator("node_id")
@@ -108,7 +140,6 @@ class Candidate(BaseModel):
     tokens_est: int = Field(default=32, ge=0)
     horizon: Horizon = Horizon.WORKING
     content_ref: str = ""
-    # Present only in local pipeline; stripped by redact_state.
     content: str | None = None
 
 
@@ -149,7 +180,7 @@ class JevBatchResponse(BaseModel):
 
 
 class GateDecision(BaseModel):
-    """Policy outcome for one candidate after Jev + thresholds."""
+    """Policy outcome for one candidate after Jev + thresholds (ingress)."""
 
     node_id: str
     action: HydrateAction
@@ -161,6 +192,38 @@ class GateDecision(BaseModel):
     fail_closed: bool = False
     reason: str = ""
     local_score: float = 0.0
+    escalation: EscalationRecord | None = None
+
+
+class EmitDecision(BaseModel):
+    """Egress emit gate outcome."""
+
+    sink: str = "agent_channel"
+    action: EmitAction
+    confidence: float
+    leak_risk: bool | None = None
+    on_topic: bool | None = None
+    fail_closed: bool = False
+    reason: str = ""
+    proposed_chars: int = 0
+    escalation: EscalationRecord | None = None
+
+
+class WritebackDecision(BaseModel):
+    """Durable writeback gate outcome."""
+
+    target: str = "graph_durable"
+    node_id: str
+    action: WritebackAction
+    confidence: float
+    still_safe: bool | None = None
+    fail_closed: bool = False
+    reason: str = ""
+    escalation: EscalationRecord | None = None
+
+
+# Backward-compatible alias used by earlier dual-gate sketches.
+EgressDecision = EmitDecision
 
 
 class HydratedNode(BaseModel):
@@ -176,7 +239,7 @@ class HydratedNode(BaseModel):
 
 
 class PipelineResult(BaseModel):
-    """End-to-end observe→retrieve→redact→jev→hydrate outcome."""
+    """End-to-end observe→retrieve→redact→jev→hydrate (ingress) outcome."""
 
     query: str
     candidates: list[Candidate]
@@ -185,6 +248,24 @@ class PipelineResult(BaseModel):
     hydrated: list[HydratedNode]
     jev_called: bool = False
     fail_closed_count: int = 0
+    escalate_human_count: int = 0
+    escalations: list[EscalationRecord] = Field(default_factory=list)
+
+
+class EgressResult(BaseModel):
+    """Egress / writeback gate outcome for a proposed summary emit."""
+
+    proposed_text_redacted: str
+    context: dict[str, Any] = Field(default_factory=dict)
+    decision: EmitDecision
+    jev_called: bool = False
+
+
+class DualGateResult(BaseModel):
+    """Ingress hydrate + egress emit decisions for demo / dual-gate runs."""
+
+    ingress: PipelineResult
+    egress: EgressResult | None = None
 
 
 class AdmitResult(BaseModel):
@@ -206,6 +287,12 @@ Q_NETWORK_ROUTE = "memory_network"
 Q_TRIGGER_REFLECT = "trigger_reflect"
 Q_ADMIT = "admit"
 Q_NODE_KIND = "node_kind"
+Q_EMIT_ACTION = "emit_action"
+Q_LEAK_RISK = "leak_risk"
+Q_ON_TOPIC = "on_topic"
+Q_WRITEBACK_ACTION = "writeback_action"
+Q_WRITEBACK_NEED = "writeback_need"
+Q_WRITEBACK_STILL_SAFE = "writeback_still_safe"
 
 JEV_MODEL_PIN = "jev-1.13.0"
 

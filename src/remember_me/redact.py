@@ -22,6 +22,63 @@ ALLOWED_OUTBOUND_KEYS = frozenset(
     }
 )
 
+# Positive allowlists only (David: denylist is a reproducible leak surface).
+ESCALATION_SNAPSHOT_ALLOWLIST = ALLOWED_OUTBOUND_KEYS | frozenset(
+    {
+        "proposed_chars",
+        "proposed_summary_sha256",
+        "sink",
+        "target",
+        "salience",
+        "horizon",
+    }
+)
+
+EMIT_META_ALLOWLIST = frozenset(
+    {
+        "node_id",
+        "egress_id",
+        "proposed_chars",
+        "proposed_summary_sha256",
+    }
+)
+
+WRITEBACK_PROPOSED_ALLOWLIST = frozenset(
+    {
+        "node_id",
+        "kind",
+        "tags",
+        "salience",
+        "horizon",
+        "tokens_est",
+        "degree",
+    }
+)
+
+
+def allowlist_snapshot(
+    snapshot: dict[str, Any] | None,
+    *,
+    allowed: frozenset[str],
+) -> dict[str, Any]:
+    """Keep only positively allowlisted keys (case-insensitive match on allowlist)."""
+    if not snapshot:
+        return {}
+    allowed_l = {a.lower() for a in allowed}
+    return {k: v for k, v in snapshot.items() if str(k).lower() in allowed_l}
+
+
+def summary_fingerprint(text: str) -> dict[str, Any]:
+    """Replace free-text summaries with length + sha256 only (never egress body text)."""
+    import hashlib
+
+    raw = text or ""
+    return {
+        "proposed_chars": len(raw),
+        "proposed_summary_sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
+    }
+
+
 
 def redact_state(candidates: list[Candidate]) -> list[RedactedCandidate]:
     """Project candidates to the only fields allowed outbound to Jev.

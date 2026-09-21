@@ -1,6 +1,7 @@
-"""Offline bake-off: Hindsight-stub-only vs Jev-gated hydrate (50 synthetic queries).
+"""Offline bake-off: ``local_topk_stub`` vs FakeJev-gated hydrate (synthetic queries).
 
-Metrics: precision@k, overshare proxy, latency. Writes JSON report.
+NOT product evidence: FakeJev confidence correlates with ``local_score``; treat
+metrics as wiring/regression signals only — never as live TypeSafe / Hindsight proof.
 """
 
 from __future__ import annotations
@@ -111,7 +112,8 @@ def run_local_topk_stub(
         t0 = time.perf_counter()
         cands = retriever.retrieve(case.query, top_k=k)
         ids = [c.node_id for c in cands]
-        # Stub-only: treat all retrieved as "hydrated" stubs (local top-k baseline; not commercial Hindsight).
+        # Stub-only: treat all retrieved as "hydrated" stubs
+        # (local top-k baseline; not commercial Hindsight).
         latencies.append((time.perf_counter() - t0) * 1000)
         p, r = _precision_recall(ids, case.relevant_ids, k)
         precs.append(p)

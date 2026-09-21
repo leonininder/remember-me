@@ -77,3 +77,52 @@ def test_http_jev_admit_missing_key():
     client = HttpJev(api_key="")
     resp = client.decide_admit({"node_id": "n", "kind": "fact", "tags": [], "salience": 0.4})
     assert resp.failed
+
+
+def test_fake_jev_decide_emit():
+    client = FakeJev(confidence_override=0.9)
+    resp = client.decide_emit(
+        sink="agent_channel",
+        payload_meta={"proposed_summary": "ok", "node_id": "e1", "content": "NO"},
+    )
+    assert not resp.failed
+    assert "emit_action" in resp.results
+    assert "content" not in client.last_outbound[0]
+
+
+def test_fake_jev_decide_writeback():
+    client = FakeJev(confidence_override=0.9)
+    resp = client.decide_writeback(
+        target="graph_durable",
+        proposed={"node_id": "n1", "kind": "fact", "tags": ["t"], "salience": 0.5, "body": "NO"},
+    )
+    assert not resp.failed
+    assert "writeback_action" in resp.results
+    assert "body" not in client.last_outbound[0]
+
+
+def test_fake_jev_fanout_one_call_multi_candidate():
+    """Multi-candidate × multi-question = one decide_hydrate call (fan-out default)."""
+    from datetime import UTC, datetime
+
+    cands = [
+        Candidate(
+            node_id=nid,
+            kind=NodeKind.FACT,
+            tags=["t"],
+            degree=0,
+            last_touch=datetime.now(UTC),
+            local_score=s,
+            tokens_est=4,
+            content="secret",
+        )
+        for nid, s in (("a", 0.9), ("b", 0.5), ("c", 0.3))
+    ]
+    client = FakeJev()
+    out = client.decide_hydrate("q", redact_state(cands))
+    assert client.call_count == 1
+    assert len(out) == 3
+    for r in out:
+        assert "hydrate_action" in r.results
+        assert "need_for_next_turn" in r.results
+        assert "still_matters_for_latest_ask" in r.results

@@ -10,7 +10,7 @@ from pathlib import Path
 from remember_me.bakeoff import run_bakeoff
 from remember_me.graph import TopologyGraph
 from remember_me.jev_client import FakeJev
-from remember_me.pipeline import MemoryPipeline
+from remember_me.pipeline import DualGatePipeline, MemoryPipeline
 from remember_me.types import Horizon, NodeKind
 
 
@@ -38,11 +38,23 @@ def _seed_demo_graph() -> TopologyGraph:
     return g
 
 
-def cmd_demo(_: argparse.Namespace) -> int:
-    print("=== remember-me demo (offline FakeJev) ===\n")
+def cmd_demo(args: argparse.Namespace) -> int:
+    dual = bool(getattr(args, "dual", False))
+    title = "demo-dual" if dual else "demo"
+    print(f"=== remember-me {title} (offline FakeJev) ===\n")
+    print("Local candidates first. Jev never ranks. Jev only admits.\n")
     g = _seed_demo_graph()
     client = FakeJev()
-    pipe = MemoryPipeline(g, client, top_k=5)
+    pipe: MemoryPipeline
+    if dual:
+        pipe = DualGatePipeline(g, client, top_k=5)
+    else:
+        pipe = MemoryPipeline(g, client, top_k=5)
+        # Ensure egress available for demo print even on plain MemoryPipeline.
+        from remember_me.gates import EmitEgressGate
+
+        pipe.emit_gate = EmitEgressGate(client)
+
     query = "What are my UI and locale preferences?"
     print(f"Query: {query}\n")
     result = pipe.run(query)
@@ -52,13 +64,35 @@ def cmd_demo(_: argparse.Namespace) -> int:
     keys = list(result.redacted[0].model_dump().keys()) if result.redacted else []
     print(f"\nRedacted outbound keys: {keys}")
     print(f"Jev called: {result.jev_called} (client.call_count={client.call_count})")
-    print("\nDecisions:")
+    print("\nIngress decisions:")
     for d in result.decisions:
-        print(f"  - {d.node_id}: {d.action.value} conf={d.confidence:.3f} ({d.reason})")
-    print(f"\nHydrated ({len(result.hydrated)}):")
+        esc = " [escalation]" if d.escalation else ""
+        print(f"  - {d.node_id}: {d.action.value} conf={d.confidence:.3f} ({d.reason}){esc}")
+    print(
+        f"\nEscalate-human count: {result.escalate_human_count}; "
+        f"escalation records: {len(result.escalations)}"
+    )
+    print(f"Hydrated ({len(result.hydrated)}):")
     for h in result.hydrated:
         preview = h.content[:80] + ("…" if len(h.content) > 80 else "")
         print(f"  - {h.node_id} [{h.action.value}] stub={h.stub}: {preview}")
+
+    # Egress gate (always in demo so dual-gate is visible).
+    summary = (
+        "Redacted prefs summary: UI theme + locale markers considered; "
+        "no secrets/bodies included."
+    )
+    egress = pipe.run_egress(
+        summary,
+        {"hydrated_ids": [h.node_id for h in result.hydrated], "node_id": "demo_egress"},
+        sink="agent_channel",
+    )
+    ed = egress.decision
+    print("\nEgress decision:")
+    print(
+        f"  - sink={ed.sink} action={ed.action.value} conf={ed.confidence:.3f} "
+        f"({ed.reason}) leak_risk={ed.leak_risk} on_topic={ed.on_topic}"
+    )
     print("\nDemo complete. Secrets/bodies were not sent to Jev.")
     return 0
 
@@ -84,12 +118,26 @@ def cmd_score_report(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="remember-me",
-        description="remember-me: local recall + TypeSafe Jev hydrate/admit decision gates",
+        description="remember-me: local recall + TypeSafe Jev hydrate/admit/emit decision gates",
     )
     sub = p.add_subparsers(dest="command", required=True)
 
-    d = sub.add_parser("demo", help="Offline end-to-end demo with FakeJev")
+    d = sub.add_parser(
+        "demo",
+        help="Offline end-to-end demo with FakeJev (prints ingress + egress)",
+    )
+    d.add_argument(
+        "--dual",
+        action="store_true",
+        help="Use DualGatePipeline (emit + writeback gates enabled)",
+    )
     d.set_defaults(func=cmd_demo)
+
+    dd = sub.add_parser(
+        "demo-dual",
+        help="Offline dual-gate demo (ingress hydrate + egress emit)",
+    )
+    dd.set_defaults(func=cmd_demo, dual=True)
 
     b = sub.add_parser("bakeoff", help="Run offline 50-query bake-off → metrics JSON")
     b.add_argument("--out", default="bakeoff_metrics.json", help="Output JSON path")

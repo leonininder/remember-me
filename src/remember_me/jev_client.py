@@ -18,20 +18,28 @@ from remember_me.redact import assert_no_secrets, redact_to_dicts
 from remember_me.types import (
     JEV_MODEL_PIN,
     Q_ADMIT,
+    Q_EMIT_ACTION,
     Q_HYDRATE_ACTION,
+    Q_LEAK_RISK,
     Q_NEED_FOR_NEXT_TURN,
     Q_NETWORK_ROUTE,
     Q_NODE_KIND,
+    Q_ON_TOPIC,
     Q_STILL_MATTERS,
     Q_TRIGGER_REFLECT,
+    Q_WRITEBACK_ACTION,
+    Q_WRITEBACK_NEED,
+    Q_WRITEBACK_STILL_SAFE,
     AdmitDecision,
     Candidate,
+    EmitAction,
     HydrateAction,
     JevBatchResponse,
     JevQuestionResult,
     NetworkRoute,
     NodeKind,
     RedactedCandidate,
+    WritebackAction,
 )
 
 
@@ -57,6 +65,24 @@ class JevClient(Protocol):
         proposed: dict[str, Any],
     ) -> JevBatchResponse:
         """Admit + node-kind Choice for a proposed marker (redacted fields only)."""
+        ...
+
+    def decide_emit(
+        self,
+        *,
+        sink: str,
+        payload_meta: dict[str, Any],
+    ) -> JevBatchResponse:
+        """Egress emit Choice for a redacted payload leaving the local boundary."""
+        ...
+
+    def decide_writeback(
+        self,
+        *,
+        target: str,
+        proposed: dict[str, Any],
+    ) -> JevBatchResponse:
+        """Writeback Choice for durable LTM / wiki / bank (redacted fields only)."""
         ...
 
 
@@ -136,7 +162,7 @@ class FakeJev:
             elif conf >= 0.85:
                 action = HydrateAction.HYDRATE_FULL
             elif conf >= 0.55:
-                action = HydrateAction.STUB_ONLY
+                action = HydrateAction.ESCALATE_HUMAN
             else:
                 action = HydrateAction.SKIP
 
@@ -209,6 +235,123 @@ class FakeJev:
                 ),
                 Q_NODE_KIND: JevQuestionResult(
                     question_id=Q_NODE_KIND, value=kind.value, confidence=round(conf, 4)
+                ),
+            },
+        )
+
+
+    def decide_emit(
+        self,
+        *,
+        sink: str,
+        payload_meta: dict[str, Any],
+    ) -> JevBatchResponse:
+        """One decide call: emit_action (+ leak_risk / on_topic). Fail-closed on force_*."""
+        self.call_count += 1
+        from remember_me.redact import EMIT_META_ALLOWLIST, allowlist_snapshot
+
+        safe = allowlist_snapshot(payload_meta, allowed=EMIT_META_ALLOWLIST)
+        outbound = {"sink": sink, **safe}
+        assert_no_secrets(outbound)
+        self.last_outbound = [outbound]
+        nid = str(safe.get("node_id") or safe.get("egress_id") or "egress")
+        if self.force_timeout:
+            return JevBatchResponse(node_id=nid, timed_out=True, error="timeout")
+        if self.force_deny:
+            return JevBatchResponse(node_id=nid, denied=True, error="denied")
+        if self.force_malformed:
+            return JevBatchResponse(node_id=nid, malformed=True, error="malformed")
+
+        unit = _stable_unit(f"emit|{sink}|{nid}|{self.model_pin}")
+        conf = (
+            self.confidence_override
+            if self.confidence_override is not None
+            else 0.6 + 0.35 * unit
+        )
+        if conf >= 0.85:
+            action = EmitAction.ALLOW_EMIT
+        elif conf >= 0.55:
+            action = EmitAction.ESCALATE_HUMAN
+        else:
+            action = EmitAction.DENY_EMIT
+        leak = unit < 0.15
+        on_topic = unit > 0.25
+        return JevBatchResponse(
+            node_id=nid,
+            results={
+                Q_EMIT_ACTION: JevQuestionResult(
+                    question_id=Q_EMIT_ACTION,
+                    value=action.value,
+                    confidence=round(conf, 4),
+                ),
+                Q_LEAK_RISK: JevQuestionResult(
+                    question_id=Q_LEAK_RISK,
+                    value=leak,
+                    confidence=round(min(0.99, conf), 4),
+                ),
+                Q_ON_TOPIC: JevQuestionResult(
+                    question_id=Q_ON_TOPIC,
+                    value=on_topic,
+                    confidence=round(min(0.99, conf), 4),
+                ),
+            },
+        )
+
+    def decide_writeback(
+        self,
+        *,
+        target: str,
+        proposed: dict[str, Any],
+    ) -> JevBatchResponse:
+        """One decide call: writeback_action (+ optional need / still_safe)."""
+        self.call_count += 1
+        safe = {
+            k: v
+            for k, v in proposed.items()
+            if k in {"node_id", "kind", "tags", "salience", "horizon", "tokens_est", "degree"}
+        }
+        outbound = {"target": target, **safe}
+        assert_no_secrets(outbound)
+        self.last_outbound = [outbound]
+        nid = str(safe.get("node_id") or "unknown")
+        if self.force_timeout:
+            return JevBatchResponse(node_id=nid, timed_out=True, error="timeout")
+        if self.force_deny:
+            return JevBatchResponse(node_id=nid, denied=True, error="denied")
+        if self.force_malformed:
+            return JevBatchResponse(node_id=nid, malformed=True, error="malformed")
+
+        unit = _stable_unit(f"writeback|{target}|{nid}|{self.model_pin}")
+        conf = (
+            self.confidence_override
+            if self.confidence_override is not None
+            else 0.55 + 0.4 * unit
+        )
+        if conf >= 0.85:
+            action = WritebackAction.ALLOW_WRITEBACK
+        elif conf >= 0.55:
+            action = WritebackAction.ESCALATE_HUMAN
+        else:
+            action = WritebackAction.DENY_WRITEBACK
+        still_safe = conf >= 0.5
+        need = 1 + int(4 * min(1.0, conf))
+        return JevBatchResponse(
+            node_id=nid,
+            results={
+                Q_WRITEBACK_ACTION: JevQuestionResult(
+                    question_id=Q_WRITEBACK_ACTION,
+                    value=action.value,
+                    confidence=round(conf, 4),
+                ),
+                Q_WRITEBACK_NEED: JevQuestionResult(
+                    question_id=Q_WRITEBACK_NEED,
+                    value=need,
+                    confidence=round(min(0.99, conf + 0.02), 4),
+                ),
+                Q_WRITEBACK_STILL_SAFE: JevQuestionResult(
+                    question_id=Q_WRITEBACK_STILL_SAFE,
+                    value=still_safe,
+                    confidence=round(min(0.99, conf), 4),
                 ),
             },
         )
@@ -379,6 +522,17 @@ class HttpJev:
 
         if resp.status_code in (401, 403):
             return JevBatchResponse(node_id=node_id, denied=True, error=f"http_{resp.status_code}")
+        if resp.status_code == 429:
+            retry_after = ""
+            try:
+                retry_after = str(resp.headers.get("Retry-After") or resp.headers.get("retry-after") or "")
+            except Exception:
+                retry_after = ""
+            err = "http_429"
+            if retry_after:
+                err = f"http_429:retry_after={retry_after}"
+            # Rate-limit → fail-closed (treat as timed_out so policy never allows).
+            return JevBatchResponse(node_id=node_id, timed_out=True, error=err)
         if resp.status_code >= 400:
             return JevBatchResponse(
                 node_id=node_id, error=f"http_{resp.status_code}", malformed=True
@@ -445,6 +599,16 @@ class HttpJev:
             return _all(
                 JevBatchResponse(node_id="*", denied=True, error=f"http_{resp.status_code}")
             )
+        if resp.status_code == 429:
+            retry_after = ""
+            try:
+                retry_after = str(resp.headers.get("Retry-After") or resp.headers.get("retry-after") or "")
+            except Exception:
+                retry_after = ""
+            err = "http_429"
+            if retry_after:
+                err = f"http_429:retry_after={retry_after}"
+            return _all(JevBatchResponse(node_id="*", timed_out=True, error=err))
         if resp.status_code >= 400:
             return _all(
                 JevBatchResponse(
@@ -475,6 +639,54 @@ class HttpJev:
             )
 
         return _split_batched_answers(answers, node_ids=node_ids)
+
+
+    def decide_emit(
+        self,
+        *,
+        sink: str,
+        payload_meta: dict[str, Any],
+    ) -> JevBatchResponse:
+        """Egress: one System One POST with emit_action + leak_risk + on_topic."""
+        self.call_count += 1
+        from remember_me.redact import EMIT_META_ALLOWLIST, allowlist_snapshot
+
+        safe = allowlist_snapshot(payload_meta, allowed=EMIT_META_ALLOWLIST)
+        state = {"sink": sink, **safe}
+        assert_no_secrets(state)
+        self.last_outbound = [state]
+        nid = str(safe.get("node_id") or safe.get("egress_id") or "egress")
+        payload = {
+            "model": self.model_pin,
+            "state": state,
+            "questions": _emit_questions(),
+        }
+        return self._post_system_one(payload, node_id=nid)
+
+    def decide_writeback(
+        self,
+        *,
+        target: str,
+        proposed: dict[str, Any],
+    ) -> JevBatchResponse:
+        """Writeback: one System One POST with writeback_action (+ need / still_safe)."""
+        self.call_count += 1
+        safe = {
+            k: v
+            for k, v in proposed.items()
+            if k in {"node_id", "kind", "tags", "salience", "horizon", "tokens_est", "degree"}
+        }
+        state = {"target": target, **safe}
+        assert_no_secrets(state)
+        self.last_outbound = [state]
+        nid = str(safe.get("node_id") or "unknown")
+        payload = {
+            "model": self.model_pin,
+            "state": state,
+            "questions": _writeback_questions(),
+        }
+        return self._post_system_one(payload, node_id=nid)
+
 
 
 def _hydrate_questions(
@@ -587,6 +799,57 @@ def _admit_questions() -> dict[str, dict[str, Any]]:
             "criteria": [k.value for k in NodeKind],
         },
     }
+
+
+def _emit_questions() -> dict[str, dict[str, Any]]:
+    return {
+        Q_EMIT_ACTION: {
+            "type": "choice",
+            "instructions": (
+                "Choose the egress/writeback emit action for this redacted payload. "
+                "allow_emit only when safe and on-topic; otherwise deny_emit, "
+                "redact_further, or escalate_human."
+            ),
+            "criteria": [a.value for a in EmitAction],
+        },
+        Q_LEAK_RISK: {
+            "type": "noul",
+            "instructions": (
+                "Does this proposed summary risk leaking secrets, PII, or credentials?"
+            ),
+        },
+        Q_ON_TOPIC: {
+            "type": "noul",
+            "instructions": (
+                "Is this proposed summary on-topic for the intended emit / egress channel?"
+            ),
+        },
+    }
+
+
+def _writeback_questions() -> dict[str, dict[str, Any]]:
+    return {
+        Q_WRITEBACK_ACTION: {
+            "type": "choice",
+            "instructions": (
+                "Choose the durable writeback action for this redacted proposed marker. "
+                "allow_writeback only when safe; mid uncertainty → escalate_human."
+            ),
+            "criteria": [a.value for a in WritebackAction],
+        },
+        Q_WRITEBACK_NEED: {
+            "type": "score",
+            "instructions": "How needed is this durable write for long-term memory quality?",
+            "criteria": [1, 2, 3, 4, 5],
+        },
+        Q_WRITEBACK_STILL_SAFE: {
+            "type": "noul",
+            "instructions": (
+                "Is it still safe to write this marker to durable LTM / wiki / bank?"
+            ),
+        },
+    }
+
 
 
 def _map_system_one_answers(

@@ -425,3 +425,61 @@ def test_http_jev_batch_candidates_false_per_node():
     payload = mock_client.post.call_args_list[0].kwargs["json"]
     assert "candidate" in payload["state"]
     assert "hydrate_action" in payload["questions"]
+
+
+def test_http_jev_decide_emit_payload_shape_mocked():
+    client = HttpJev(api_key="k")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "model": JEV_MODEL_PIN,
+        "answers": {
+            "emit_action": {
+                "type": "choice",
+                "choice": "allow_emit",
+                "confidence": 0.92,
+            },
+            "leak_risk": {"type": "noul", "noul": 0.1},
+            "on_topic": {"type": "noul", "noul": 0.9},
+        },
+    }
+    mock_client = _mock_client(mock_resp)
+    with patch("httpx.Client", return_value=mock_client):
+        out = client.decide_emit(
+            sink="audit_log",
+            payload_meta={"proposed_summary": "hi", "node_id": "e1"},
+        )
+    assert not out.failed
+    payload = mock_client.post.call_args.kwargs["json"]
+    assert payload["state"]["sink"] == "audit_log"
+    assert "emit_action" in payload["questions"]
+    assert "content" not in payload["state"]
+
+
+def test_http_jev_decide_writeback_payload_shape_mocked():
+    client = HttpJev(api_key="k")
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "model": JEV_MODEL_PIN,
+        "answers": {
+            "writeback_action": {
+                "type": "choice",
+                "choice": "allow_writeback",
+                "confidence": 0.9,
+            },
+            "writeback_need": {"type": "score", "score": 4, "confidence": 0.88},
+            "writeback_still_safe": {"type": "noul", "noul": 0.85},
+        },
+    }
+    mock_client = _mock_client(mock_resp)
+    with patch("httpx.Client", return_value=mock_client):
+        out = client.decide_writeback(
+            target="wiki_stage",
+            proposed={"node_id": "n1", "kind": "fact", "tags": ["t"], "salience": 0.5},
+        )
+    assert not out.failed
+    payload = mock_client.post.call_args.kwargs["json"]
+    assert payload["state"]["target"] == "wiki_stage"
+    assert "writeback_action" in payload["questions"]
+    assert "body" not in payload["state"]

@@ -2,6 +2,8 @@
 
 **Agents forget. Remember Me decides what to hydrate.**
 
+**Local candidates first. Jev never ranks. Jev only admits.**
+
 Local recall finds candidates. TypeSafe **Jev** gates include / stub / skip / promote — *after* retrieval, on a **redacted** set. Not a memory bank. A decision gate.
 
 ### System One / intelligent if
@@ -48,6 +50,8 @@ Honest pitch: we sit **between** local candidates and the LLM. Jev is **not** th
 | TEMPR-style recall | Keyword / tag / recency — **no Jev ranking** |
 | Hydrate gate | Choice `hydrate_action` + Score need + Noul still_matters |
 | Admit gate | Choice admit + closed node-kind taxonomy |
+| Egress / writeback gate | `decide_emit` / `decide_writeback`; fail-closed deny |
+| Escalate human | First-class mid-band + conflicts; structured EscalationRecord |
 | Fail-closed policy | timeout / deny / malformed → skip (optional local stub) |
 | Redaction contract | Outbound = metadata only; secrets asserted in tests |
 | Offline bake-off | 50 synthetic queries → precision / overshare / latency |
@@ -78,7 +82,7 @@ observe → write markers + content_ref
 | Confidence | Action |
 |------------|--------|
 | ≥ 0.85 | `hydrate_full` (or promote) |
-| 0.55–0.85 | `stub_only` / escalate |
+| 0.55–0.85 | **`escalate_human`** (+ EscalationRecord) |
 | < 0.55 | `skip` |
 | timeout / deny / malformed | **fail-closed** → skip |
 
@@ -109,6 +113,7 @@ for node in result.hydrated:
 
 ```bash
 remember-me demo
+remember-me demo-dual
 remember-me bakeoff --out bakeoff_metrics.json
 remember-me score-report
 ```
@@ -127,8 +132,9 @@ src/remember_me/
   redact.py      # Outbound redaction + secret assertions
   jev_client.py  # FakeJev + HttpJev
   policy.py      # Thresholds + fail-closed mapping
-  gates.py       # MemoryGate, RetainAdmitGate
-  pipeline.py    # observe → retrieve → redact → jev → hydrate
+  gates.py       # MemoryGate, EmitEgressGate, WritebackGate, RetainAdmitGate
+  fanout.py      # FANOUT_DEFAULTS (frozen question fan-out)
+  pipeline.py    # observe → retrieve → redact → jev → hydrate (+ run_egress)
   bakeoff.py     # 50-query offline bake-off → metrics JSON
   cli.py
 ```
@@ -148,7 +154,7 @@ See [SECURITY.md](SECURITY.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Limitations (honest)
 
-- **PREVIEW / Pre-Skill** — not a formal promoted skill. See [SCORECARD.md](SCORECARD.md) (~8.4–8.5 weighted, FakeJev evidence basis).
+- **PREVIEW / Pre-Skill** — not a formal promoted skill. See [SCORECARD.md](SCORECARD.md) (~8.6 weighted after Phase 9.5 offline dual-gate; FakeJev evidence basis — still &lt;9.5).
 - **Offline bake-off ≠ live proof.** `remember-me bakeoff` uses **FakeJev** (deterministic, no network). Published `bakeoff_metrics.json` must not be read as TypeSafe cloud latency or calibrated decision quality. See [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md) and [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md).
 - **No live acceleration claim.** We do **not** claim that Jev accelerates memory versus Hindsight or dump-all. Offline FakeJev precision deltas are **not** live proof. Any future win must be quality/token efficiency under measured live RTT — not “faster FakeJev.”
 - **HttpJev contract fixed; live unproven.** Speaks public System One (`POST /v1/systemone`, `state` + typed `questions`; batched multi-candidate hydrate when possible). Do **not** advertise cloud mode as working without a successful redacted call log. See [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md).
@@ -172,6 +178,8 @@ Regenerate committed metrics with `make bakeoff` if numbers drift. See [docs/BAK
 
 ## Further docs
 
+- [docs/DUAL_GATE.md](docs/DUAL_GATE.md) — dual-gate egress + escalate_human
+- [docs/REVIEW_PACKET.md](docs/REVIEW_PACKET.md) — David + Justin Sun review packet
 - [docs/COOKBOOK.md](docs/COOKBOOK.md) — Playground + System One hydrate cookbook
 - [docs/MISCONCEPTIONS.md](docs/MISCONCEPTIONS.md) — common mistakes
 - [docs/GETTING_STARTED_ZH.md](docs/GETTING_STARTED_ZH.md) — 繁中快速上手
