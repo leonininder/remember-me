@@ -15,18 +15,18 @@
 | Evidence | 20% | **8.5** | Live enrich v2 `bakeoff_metrics_live.json`: C precision **0.727** clears B−0.05; still **not ≥9.5**; no acceleration |
 | Goal fit | 20% | **9.0** | Dual egress + escalate_human + no-rerank; Jev ≠ store ≠ ranker |
 | Runtime | 15% | **8.5** | Live System One hydrate/emit succeed on pin `jev-1.13.0`; CLI `bakeoff --live` |
-| Verification | 15% | **8.5** | HTTP chaos (offline mock) + live 200s; remote CI on main **not claimed** |
+| Verification | 15% | **9.0** | HTTP chaos + live 200s; **remote CI green** on `main` @ `c863016` ([run 35668516213](https://github.com/leonininder/remember-me/actions/runs/35668516213)) |
 | Safety | 10% | **9.0** | ALLOWLIST EscalationRecord + GateAuditRecord + adversarial redact |
 | License | 10% | **9.0** | MIT; pydantic/httpx clean |
-| Maintainability | 10% | **8.0** | Stale LIVE C=0.0/NON_PROMOTE section fixed 2026-09-22 post-David; CI workflow present — **do not claim remote green** |
-| **Weighted overall** | 100% | **~8.6** | Enrich v2 quality bars clear; **not ≥9.5**; acceleration still **not** supported (latency) |
+| Maintainability | 10% | **8.5** | SCORECARD synced; remote Actions green on main (3.11/3.12/3.13) |
+| **Weighted overall** | 100% | **~8.8** | Enrich v2 bars + remote CI green; **still not ≥9.5**; no acceleration |
 
 ### Weighted calculation
 
 ```text
-0.20×8.5 + 0.20×9.0 + 0.15×8.5 + 0.15×8.5 + 0.10×9.0 + 0.10×9.0 + 0.10×8.0
-= 1.70 + 1.80 + 1.275 + 1.275 + 0.90 + 0.90 + 0.80
-= 8.65 ≈ **~8.6**
+0.20×8.5 + 0.20×9.0 + 0.15×8.5 + 0.15×9.0 + 0.10×9.0 + 0.10×9.0 + 0.10×8.5
+= 1.70 + 1.80 + 1.275 + 1.35 + 0.90 + 0.90 + 0.85
+= 8.775 ≈ **~8.8**
 ```
 
 Honesty note: Evidence rises above 7.5 **only** because real live logs are committed. Enrich v2 clears precision/overshare/fail_closed bars under redacted egress; latency still ↑ vs B → **do not** claim acceleration. **Do not advertise ≥9.5.**
@@ -66,7 +66,7 @@ Usage (C enrich v2): see live metrics JSON (~155k in / ~23k out class).
 
 ## Remaining blockers to honest ≥9.5
 
-1. Remote CI green on `main` (push blocked until PAT has **workflow** scope; not claimed)  
+1. ~~Remote CI green on `main`~~ — **done** @ `c863016` / Actions run 35668516213  
 2. Independent human redact / allowlist review  
 3. David/Justin formal ≥9.5 (still REJECT on current packet)  
 4. Leon formal sign-off  
@@ -76,7 +76,7 @@ Usage (C enrich v2): see live metrics JSON (~155k in / ~23k out class).
 
 ## Verdict
 
-**Keep as Pre-Skill / PREVIEW.** Overall **~8.6** after enrich v2 live bake-off.  
+**Keep as Pre-Skill / PREVIEW.** Overall **~8.8** after enrich v2 + remote CI green.  
 **PROMOTE_CANDIDATE** for pre-registered quality bars only (`personal_prefs`).  
 Live **contract works**; quality bars **cleared** under redacted enrich; acceleration / ≥9.5 narratives still **REJECTED**.
 
