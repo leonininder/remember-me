@@ -69,8 +69,16 @@ Usage (C enrich v2): see live metrics JSON (~155k in / ~23k out class).
 1. ~~Remote CI green on `main`~~ — **done** @ `c863016` / Actions run 35668516213  
 2. Independent human redact / allowlist review  
 3. David/Justin formal ≥9.5 (still REJECT on current packet)  
-4. Leon formal sign-off  
+4. ~~Leon formal sign-off~~ — **done** 2026-09-22 07:49 CST (PREVIEW／AWC only; see `docs/reviews/LEON_SIGNOFF_2026-09-22.md`)  
 5. Do **not** treat recovery-floor precision bar as ≥9.5 evidence; ontology may be fixture-tilted
+
+---
+
+## Leon sign-off
+
+**2026-09-22 07:49 CST — Leon signed off** on current **PREVIEW / APPROVE_WITH_CONDITIONS** status.  
+Details: [docs/reviews/LEON_SIGNOFF_2026-09-22.md](docs/reviews/LEON_SIGNOFF_2026-09-22.md).  
+Does **not** equal ≥9.5; independent redact/allowlist review remains open.
 
 ---
 
@@ -78,6 +86,6 @@ Usage (C enrich v2): see live metrics JSON (~155k in / ~23k out class).
 
 **Keep as Pre-Skill / PREVIEW.** Overall **~8.8** after enrich v2 + remote CI green.  
 **PROMOTE_CANDIDATE** for pre-registered quality bars only (`personal_prefs`).  
-Live **contract works**; quality bars **cleared** under redacted enrich; acceleration / ≥9.5 narratives still **REJECTED**.
+**Leon AWC sign-off recorded.** Acceleration / ≥9.5 narratives still **REJECTED**.
 
-See [docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md](docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md) + [docs/reviews/DAVID_2026-09-22_ENRICH_V2.md](docs/reviews/DAVID_2026-09-22_ENRICH_V2.md) + [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).
+See [docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md](docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md) + [docs/reviews/DAVID_2026-09-22_ENRICH_V2.md](docs/reviews/DAVID_2026-09-22_ENRICH_V2.md) + [docs/reviews/LEON_SIGNOFF_2026-09-22.md](docs/reviews/LEON_SIGNOFF_2026-09-22.md) + [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).
