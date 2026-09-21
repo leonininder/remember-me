@@ -525,7 +525,8 @@ class HttpJev:
         if resp.status_code == 429:
             retry_after = ""
             try:
-                retry_after = str(resp.headers.get("Retry-After") or resp.headers.get("retry-after") or "")
+                h = resp.headers
+                retry_after = str(h.get("Retry-After") or h.get("retry-after") or "")
             except Exception:
                 retry_after = ""
             err = "http_429"
@@ -602,7 +603,8 @@ class HttpJev:
         if resp.status_code == 429:
             retry_after = ""
             try:
-                retry_after = str(resp.headers.get("Retry-After") or resp.headers.get("retry-after") or "")
+                h = resp.headers
+                retry_after = str(h.get("Retry-After") or h.get("retry-after") or "")
             except Exception:
                 retry_after = ""
             err = "http_429"
