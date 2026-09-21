@@ -10,7 +10,8 @@ from remember_me.types import (
     RedactedCandidate,
 )
 
-ALLOWED_OUTBOUND_KEYS = frozenset(
+# Core redacted candidate projection (no enrichment).
+CORE_CANDIDATE_KEYS = frozenset(
     {
         "node_id",
         "kind",
@@ -21,6 +22,17 @@ ALLOWED_OUTBOUND_KEYS = frozenset(
         "tokens_est",
     }
 )
+
+# JustinSun/David 2026-09-22: structured enrichment only (no free-text query).
+ENRICHMENT_OUTBOUND_KEYS = frozenset(
+    {
+        "stub_tags",  # capped tags copy
+        "intent_class",  # closed query intent enum (state-level)
+        "length_bucket",  # short|medium|long (state-level)
+    }
+)
+
+ALLOWED_OUTBOUND_KEYS = CORE_CANDIDATE_KEYS | ENRICHMENT_OUTBOUND_KEYS
 
 # Positive allowlists only (David: denylist is a reproducible leak surface).
 ESCALATION_SNAPSHOT_ALLOWLIST = ALLOWED_OUTBOUND_KEYS | frozenset(

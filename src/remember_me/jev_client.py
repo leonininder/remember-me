@@ -128,6 +128,9 @@ class FakeJev:
             outbound = redact_to_dicts(candidates)  # type: ignore[arg-type]
         else:
             outbound = [c.model_dump(mode="json") for c in candidates]  # type: ignore[union-attr]
+        from remember_me.enrich import enrich_candidate_dicts
+
+        outbound = enrich_candidate_dicts(outbound)
         assert_no_secrets(outbound)
         self.last_outbound = outbound
 
@@ -417,7 +420,25 @@ class HttpJev:
         return hashlib.sha256(query.encode("utf-8")).hexdigest()
 
     def _build_state(self, query: str, extra: dict[str, Any]) -> dict[str, Any]:
-        state: dict[str, Any] = {"query_hash": self._query_hash(query), **extra}
+        """Build System One state: query_hash + structured enrichment; no raw query by default.
+
+        Enrichment (David/JustinSun 2026-09-22): intent_class, length_bucket, and
+        per-candidate stub_tags only — never free-text query_preview unless
+        ``include_raw_query=True`` (opt-in; not bake-off default).
+        """
+        from remember_me.enrich import enrich_candidate_dicts, query_enrichment
+
+        extra_out = dict(extra)
+        if "candidates" in extra_out and isinstance(extra_out["candidates"], list):
+            extra_out["candidates"] = enrich_candidate_dicts(extra_out["candidates"])
+        if "candidate" in extra_out and isinstance(extra_out["candidate"], dict):
+            enriched = enrich_candidate_dicts([extra_out["candidate"]])
+            extra_out["candidate"] = enriched[0] if enriched else extra_out["candidate"]
+        state: dict[str, Any] = {
+            "query_hash": self._query_hash(query),
+            **query_enrichment(query),
+            **extra_out,
+        }
         if self.include_raw_query:
             state["query_preview"] = query
         return state
@@ -436,6 +457,9 @@ class HttpJev:
             outbound = redact_to_dicts(candidates)  # type: ignore[arg-type]
         else:
             outbound = [c.model_dump(mode="json") for c in candidates]  # type: ignore[union-attr]
+        from remember_me.enrich import enrich_candidate_dicts
+
+        outbound = enrich_candidate_dicts(outbound)
         assert_no_secrets(outbound)
         self.last_outbound = outbound
 
@@ -704,17 +728,23 @@ def _choice_criteria(descriptions: dict[str, str]) -> dict[str, str | None]:
 # Closed taxonomies → human-readable Choice descriptions (live API contract).
 _HYDRATE_ACTION_CRITERIA: dict[str, str] = {
     HydrateAction.HYDRATE_FULL.value: (
-        "Hydrate the full local body for this candidate; high need and on-topic for the ask."
+        "Hydrate the full local body. Use when candidate stub_tags/kind/local_score "
+        "clearly match state.intent_class for this ask; high need and on-topic."
     ),
     HydrateAction.STUB_ONLY.value: (
-        "Keep only a stub/summary; do not load the full body this turn."
+        "Keep a stub only (tags/kind/score). Prefer when intent_class is related but "
+        "full body is unnecessary, or confidence is mid — do not load full body."
     ),
-    HydrateAction.SKIP.value: "Skip this candidate entirely for this turn.",
+    HydrateAction.SKIP.value: (
+        "Skip entirely. Prefer when stub_tags/kind conflict with intent_class, "
+        "intent_class is sensitive_avoid, or candidate is clearly off-topic."
+    ),
     HydrateAction.PROMOTE_DURABLE.value: (
-        "Promote toward durable horizon while considering hydrate."
+        "Promote toward durable horizon while considering hydrate (rare)."
     ),
     HydrateAction.ESCALATE_HUMAN.value: (
-        "Mid-band uncertainty — escalate to a human before hydrating."
+        "Escalate to a human when stub_tags and intent_class partially align but "
+        "risk/need is unclear — do not auto hydrate_full."
     ),
     HydrateAction.OTHER.value: "None of the closed actions clearly apply.",
 }
@@ -784,24 +814,29 @@ def _hydrate_questions(
         Q_HYDRATE_ACTION: {
             "type": "choice",
             "instructions": (
-                "Choose the hydrate action for this redacted memory candidate "
-                "relative to the latest user ask (query_hash only unless preview present)."
+                "Choose the hydrate action for this redacted memory candidate. "
+                "State has query_hash plus structured enrichment only: intent_class, "
+                "length_bucket, and per-candidate stub_tags/kind/local_score/tags "
+                "(no raw query text unless query_preview is present). "
+                "Align stub_tags with intent_class; prefer stub_only when unsure; "
+                "skip on mismatch or sensitive_avoid."
             ),
             "criteria": _choice_criteria(_HYDRATE_ACTION_CRITERIA),
         },
         Q_NEED_FOR_NEXT_TURN: {
             "type": "score",
             "instructions": (
-                "How needed is this candidate for answering the latest ask on the next turn? "
-                "Levels are ordered low→high."
+                "How needed is this candidate for the next turn given intent_class, "
+                "length_bucket, stub_tags, kind, and local_score? Levels low→high. "
+                "Low if tags conflict with intent_class; high if tags strongly match."
             ),
             "criteria": list(NEED_FOR_NEXT_TURN_LEVELS),
         },
         Q_STILL_MATTERS: {
             "type": "noul",
             "instructions": (
-                "Does this candidate still matter for the latest ask "
-                "(yes ≈ hydrate consideration; no ≈ safe to skip)?"
+                "Does this candidate still matter given intent_class vs stub_tags/kind "
+                "(yes ≈ consider hydrate/stub; no ≈ safe to skip)?"
             ),
         },
     }

@@ -99,3 +99,10 @@ Sample (5 queries): 21/21 `skip`, conf≈0.32–0.49. Raw Choice often picks `st
 2. Re-run live bake-off until precision/recall/overshare meet pre-registered bars **without** inventing wins.  
 3. Remote Actions green on `main` with proof.  
 4. Leon formal sign-off.
+
+---
+
+## Follow-up: enrichment recal (same day)
+
+See [`LIVE_PILOT_RECAL_2026-09-22.md`](LIVE_PILOT_RECAL_2026-09-22.md). Structured allowlist enrichment (`intent_class`, `length_bucket`, `stub_tags`) + clearer criteria; thresholds **unchanged** (0.85/0.55). Live C precision_at_k recovered **0.0 → ~0.174** but still fails pre-registered bar vs B; **NON_PROMOTE**; no acceleration claim.
+

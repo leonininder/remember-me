@@ -61,7 +61,7 @@ Usage (C): ~99k input / ~23k output tokens. Details: `docs/reviews/LIVE_PILOT_20
 
 ## Remaining blockers to honest ≥9.5
 
-1. Policy / state enrichment so live Choice confidences are useful under redaction (current bands → near-total `skip`)  
+1. Enrichment-first recal shipped (intent/length/stub_tags); live C precision ~0.174 still below pre-registered bar vs B — held-out calibration next, **without** lowering floors into noise  
 2. Live bake-off meeting pre-registered quality bars (today: **fails**)  
 3. Remote CI green on main (proof required; not claimed)  
 4. Leon formal sign-off  
@@ -70,7 +70,7 @@ Usage (C): ~99k input / ~23k output tokens. Details: `docs/reviews/LIVE_PILOT_20
 
 ## Verdict
 
-**Keep as Pre-Skill / PREVIEW.** Overall **~8.5** after live pilot.  
+**Keep as Pre-Skill / PREVIEW.** Overall **~8.5** after live pilot; enrichment recal **NON_PROMOTE** (precision recovered but bars uncleared — see LIVE_PILOT_RECAL_2026-09-22).  
 Live **contract works**; acceleration / ≥9.5 narratives **REJECTED** on this evidence.
 
 See [docs/reviews/LIVE_PILOT_2026-09-22.md](docs/reviews/LIVE_PILOT_2026-09-22.md) + [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).

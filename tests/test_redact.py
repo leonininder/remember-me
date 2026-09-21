@@ -8,6 +8,7 @@ import pytest
 
 from remember_me.redact import (
     ALLOWED_OUTBOUND_KEYS,
+    CORE_CANDIDATE_KEYS,
     assert_no_secrets,
     outbound_is_safe,
     redact_state,
@@ -36,7 +37,8 @@ def test_redact_drops_content_and_extra():
     red = redact_state([c])
     assert len(red) == 1
     d = red[0].model_dump()
-    assert set(d.keys()) == ALLOWED_OUTBOUND_KEYS
+    assert set(d.keys()) == CORE_CANDIDATE_KEYS
+    assert set(d.keys()) <= ALLOWED_OUTBOUND_KEYS
     assert "content" not in d
     assert "secret" not in d
     assert "content_ref" not in d

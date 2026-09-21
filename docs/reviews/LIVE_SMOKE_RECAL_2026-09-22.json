@@ -1,0 +1,156 @@
+{
+  "label": "LIVE smoke after structured enrichment",
+  "promotion_status": "NON_PROMOTE",
+  "thresholds": {
+    "T_ACCEPT": 0.85,
+    "T_ESCALATE": 0.55
+  },
+  "include_raw_query": false,
+  "calls": [
+    {
+      "query_id": "q01_ui_theme",
+      "latency_ms": 497.42,
+      "enrichment": {
+        "intent_class": "preference_ui",
+        "length_bucket": "short"
+      },
+      "actions": [
+        [
+          "pref_theme_dark",
+          "skip",
+          0.4,
+          false
+        ],
+        [
+          "pref_editor_vim",
+          "stub_only",
+          0.71,
+          false
+        ],
+        [
+          "edge_theme_font",
+          "stub_only",
+          0.63,
+          false
+        ]
+      ],
+      "hydrated_n": 2,
+      "fail_closed_n": 0,
+      "escalate_n": 0,
+      "response_model": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 2165,
+        "output_tokens": 361
+      },
+      "outbound_candidate_keys": [
+        "degree",
+        "kind",
+        "last_touch",
+        "local_score",
+        "node_id",
+        "tags",
+        "tokens_est"
+      ],
+      "has_stub_tags": false
+    },
+    {
+      "query_id": "q02_ui_font",
+      "latency_ms": 440.21,
+      "enrichment": {
+        "intent_class": "preference_ui",
+        "length_bucket": "short"
+      },
+      "actions": [
+        [
+          "pref_theme_font",
+          "skip",
+          0.41,
+          false
+        ],
+        [
+          "pref_test_first",
+          "skip",
+          0.76,
+          false
+        ],
+        [
+          "pref_meeting_async",
+          "skip",
+          0.42,
+          false
+        ]
+      ],
+      "hydrated_n": 0,
+      "fail_closed_n": 0,
+      "escalate_n": 0,
+      "response_model": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 2167,
+        "output_tokens": 360
+      },
+      "outbound_candidate_keys": [
+        "degree",
+        "kind",
+        "last_touch",
+        "local_score",
+        "node_id",
+        "tags",
+        "tokens_est"
+      ],
+      "has_stub_tags": false
+    },
+    {
+      "query_id": "q03_locale_lang",
+      "latency_ms": 494.92,
+      "enrichment": {
+        "intent_class": "preference_ui",
+        "length_bucket": "short"
+      },
+      "actions": [
+        [
+          "pref_lang_zh_tw",
+          "skip",
+          0.52,
+          false
+        ],
+        [
+          "pref_theme_dark",
+          "stub_only",
+          0.62,
+          false
+        ],
+        [
+          "pref_test_first",
+          "skip",
+          0.82,
+          false
+        ]
+      ],
+      "hydrated_n": 1,
+      "fail_closed_n": 0,
+      "escalate_n": 0,
+      "response_model": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 2170,
+        "output_tokens": 363
+      },
+      "outbound_candidate_keys": [
+        "degree",
+        "kind",
+        "last_touch",
+        "local_score",
+        "node_id",
+        "tags",
+        "tokens_est"
+      ],
+      "has_stub_tags": false
+    }
+  ],
+  "confidence_summary": {
+    "n": 9,
+    "min": 0.4,
+    "max": 0.82,
+    "mean": 0.588
+  },
+  "jev_calls": 3
+}

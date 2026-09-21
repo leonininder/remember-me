@@ -1,5 +1,26 @@
 {
   "label": "LIVE HttpJev evidence (not FakeJev)",
+  "promotion_status": "NON_PROMOTE",
+  "enrichment": {
+    "include_raw_query": false,
+    "keys": [
+      "intent_class",
+      "length_bucket",
+      "stub_tags"
+    ],
+    "thresholds": {
+      "T_ACCEPT": 0.85,
+      "T_ESCALATE": 0.55
+    },
+    "note": "Thresholds unchanged; enrichment-first (David/JustinSun 2026-09-22)"
+  },
+  "pre_registered_bars": {
+    "precision_at_k_C_ge_B_minus_0.05": false,
+    "overshare_rate_C_le_B": true,
+    "fail_closed_rate_C_le_0.05": true,
+    "bars_clear": false,
+    "note": "skip\u2192admit alone does not clear \u22659.5; precision/overshare/fail_closed required"
+  },
   "k": 5,
   "n_queries": 50,
   "fixtures": "/workspace/remember-me/fixtures/personal_prefs",
@@ -10,40 +31,43 @@
     "precision_at_k": 0.38666666666666666,
     "recall_at_k": 0.98,
     "overshare_rate": 0.04,
-    "mean_latency_ms": 0.17476229695603251,
-    "p50_latency_ms": 0.1594540080986917,
-    "p95_latency_ms": 0.22085197269916534,
+    "mean_latency_ms": 0.18897308153100312,
+    "p50_latency_ms": 0.17174199456349015,
+    "p95_latency_ms": 0.28778897831216455,
     "mean_hydrated": 3.6,
     "jev_calls": 0,
     "fail_closed_rate": 0.0,
+    "escalate_rate": 0.0,
     "jev_model": null,
     "usage_tokens": {}
   },
   "jev_gated_live": {
     "mode": "jev_gated_live",
     "n_queries": 50,
-    "precision_at_k": 0.0,
-    "recall_at_k": 0.0,
+    "precision_at_k": 0.174,
+    "recall_at_k": 0.3,
     "overshare_rate": 0.0,
-    "mean_latency_ms": 417.32514290022664,
-    "p50_latency_ms": 422.33698698692024,
-    "p95_latency_ms": 509.29886201629415,
-    "mean_hydrated": 0.02,
+    "mean_latency_ms": 436.08440150273964,
+    "p50_latency_ms": 427.3758550407365,
+    "p95_latency_ms": 584.0436549624428,
+    "mean_hydrated": 1.7,
     "jev_calls": 49,
     "fail_closed_rate": 0.0,
+    "escalate_rate": 0.022222222222222223,
     "jev_model": "jev-1.13.0",
     "usage_tokens": {
-      "input_tokens": 99350,
+      "input_tokens": 130831,
       "output_tokens": 22869
     }
   },
   "deltas": {
-    "precision_at_k": -0.38666666666666666,
-    "recall_at_k": -0.98,
+    "precision_at_k": -0.21266666666666667,
+    "recall_at_k": -0.6799999999999999,
     "overshare_rate": -0.04,
-    "p50_latency_ms": 422.17753297882155,
-    "p95_latency_ms": 509.078010043595,
-    "fail_closed_rate": 0.0
+    "p50_latency_ms": 427.204113046173,
+    "p95_latency_ms": 583.7558659841307,
+    "fail_closed_rate": 0.0,
+    "escalate_rate": 0.022222222222222223
   },
-  "notes": "LIVE TypeSafe System One bake-off (HttpJev). Arms: B=local_topk_stub vs C=jev_gated_live. Do NOT confuse with FakeJev bakeoff_metrics.json."
+  "notes": "LIVE TypeSafe System One bake-off (HttpJev) after structured enrichment. Arms: B=local_topk_stub vs C=jev_gated_live. FakeJev bakeoff_metrics.json remains NON-EVIDENCE. Do not claim acceleration unless bars_clear and latency supports it."
 }

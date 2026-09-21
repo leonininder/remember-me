@@ -43,6 +43,7 @@ class BakeoffMetrics:
     mean_hydrated: float = 0.0
     jev_calls: int = 0
     fail_closed_rate: float = 0.0
+    escalate_rate: float = 0.0
     jev_model: str | None = None
     usage_tokens: dict[str, Any] = field(default_factory=dict)
 
@@ -152,6 +153,7 @@ def run_jev_gated(
     overshares: list[float] = []
     hydrated_counts: list[int] = []
     fail_closed = 0
+    escalate_n = 0
     decision_n = 0
 
     for case in cases:
@@ -173,6 +175,8 @@ def run_jev_gated(
             decision_n += 1
             if d.fail_closed:
                 fail_closed += 1
+            if d.action == HydrateAction.ESCALATE_HUMAN:
+                escalate_n += 1
 
     return BakeoffMetrics(
         mode="jev_gated",
@@ -186,6 +190,7 @@ def run_jev_gated(
         mean_hydrated=sum(hydrated_counts) / len(hydrated_counts) if hydrated_counts else 0.0,
         jev_calls=client.call_count,
         fail_closed_rate=(fail_closed / decision_n) if decision_n else 0.0,
+        escalate_rate=(escalate_n / decision_n) if decision_n else 0.0,
         jev_model=client.model_pin,
     )
 
@@ -220,6 +225,7 @@ def run_jev_gated_live(
     overshares: list[float] = []
     hydrated_counts: list[int] = []
     fail_closed = 0
+    escalate_n = 0
     decision_n = 0
     usage_acc: dict[str, int] = {
         "input_tokens": 0,
@@ -249,6 +255,8 @@ def run_jev_gated_live(
                 fail_closed += 1
                 if "429" in (d.reason or ""):
                     rate_limited += 1
+            if d.action == HydrateAction.ESCALATE_HUMAN:
+                escalate_n += 1
         if client.last_usage and isinstance(client.last_usage, dict):
             for tok_key in ("input_tokens", "output_tokens", "total_tokens"):
                 val = client.last_usage.get(tok_key)
@@ -271,6 +279,7 @@ def run_jev_gated_live(
         mean_hydrated=sum(hydrated_counts) / len(hydrated_counts) if hydrated_counts else 0.0,
         jev_calls=client.call_count,
         fail_closed_rate=(fail_closed / decision_n) if decision_n else 0.0,
+        escalate_rate=(escalate_n / decision_n) if decision_n else 0.0,
         jev_model=client.last_response_model or client.model_pin,
         usage_tokens=usage_out,
     )
@@ -336,8 +345,30 @@ def run_bakeoff_live(
     baseline = run_local_topk_stub(graph, cases, k=k)
     gated = run_jev_gated_live(graph, cases, k=k, timeout_s=timeout_s)
 
+    # Pre-registered bars (docs/reviews/LIVE_PILOT_RECAL_2026-09-22.md) — evaluate after run.
+    prec_bar = gated.precision_at_k >= (baseline.precision_at_k - 0.05)
+    over_bar = gated.overshare_rate <= baseline.overshare_rate + 1e-12
+    fail_bar = gated.fail_closed_rate <= 0.05
+    bars_clear = bool(prec_bar and over_bar and fail_bar)
     report: dict[str, Any] = {
         "label": "LIVE HttpJev evidence (not FakeJev)",
+        "promotion_status": "PROMOTE_CANDIDATE" if bars_clear else "NON_PROMOTE",
+        "enrichment": {
+            "include_raw_query": False,
+            "keys": ["intent_class", "length_bucket", "stub_tags"],
+            "thresholds": {"T_ACCEPT": 0.85, "T_ESCALATE": 0.55},
+            "note": "Thresholds unchanged; enrichment-first (David/JustinSun 2026-09-22)",
+        },
+        "pre_registered_bars": {
+            "precision_at_k_C_ge_B_minus_0.05": prec_bar,
+            "overshare_rate_C_le_B": over_bar,
+            "fail_closed_rate_C_le_0.05": fail_bar,
+            "bars_clear": bars_clear,
+            "note": (
+                "skip→admit alone does not clear ≥9.5; "
+                "precision/overshare/fail_closed required"
+            ),
+        },
         "k": k,
         "n_queries": len(cases),
         "fixtures": str(fixtures_dir),
@@ -351,11 +382,13 @@ def run_bakeoff_live(
             "p50_latency_ms": gated.p50_latency_ms - baseline.p50_latency_ms,
             "p95_latency_ms": gated.p95_latency_ms - baseline.p95_latency_ms,
             "fail_closed_rate": gated.fail_closed_rate - baseline.fail_closed_rate,
+            "escalate_rate": gated.escalate_rate - baseline.escalate_rate,
         },
         "notes": (
-            "LIVE TypeSafe System One bake-off (HttpJev). "
+            "LIVE TypeSafe System One bake-off (HttpJev) after structured enrichment. "
             "Arms: B=local_topk_stub vs C=jev_gated_live. "
-            "Do NOT confuse with FakeJev bakeoff_metrics.json."
+            "FakeJev bakeoff_metrics.json remains NON-EVIDENCE. "
+            "Do not claim acceleration unless bars_clear and latency supports it."
         ),
     }
 
