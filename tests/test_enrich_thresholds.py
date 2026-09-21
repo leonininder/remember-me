@@ -7,13 +7,21 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 from remember_me.enrich import (
+    FIT_CLASSES,
     INTENT_CLASSES,
+    INTENT_FOCUSES,
     LENGTH_BUCKETS,
+    TOPIC_FAMILIES,
     classify_intent,
+    classify_intent_focus,
     enrich_candidate_dict,
+    enrich_candidate_dicts,
+    intent_topic_fit,
     length_bucket,
+    overlap_tag_count,
     query_enrichment,
     stub_tags,
+    topic_family,
 )
 from remember_me.jev_client import JEV_MODEL_PIN, HttpJev
 from remember_me.policy import T_ACCEPT, T_ESCALATE, map_hydrate_action
@@ -65,7 +73,12 @@ def test_low_conf_still_skips_under_held_thresholds():
 def test_intent_and_length_closed_enums():
     assert classify_intent("What is my editor theme preference?") == "preference_ui"
     assert classify_intent("What language do I prefer?") == "preference_locale"
+    # "UI language" must classify as locale, not ui (v1 bug).
+    assert classify_intent("What UI language do I prefer?") == "preference_locale"
     assert classify_intent("health insurance details") == "sensitive_avoid"
+    assert classify_intent("Locale preference without health notes") == "preference_locale"
+    assert classify_intent("Beverage preferences today?") == "preference_food"
+    assert classify_intent("What testing approach before merge?") == "preference_workflow"
     assert classify_intent("zzz unknown") == "other"
     assert all(classify_intent(q) in INTENT_CLASSES for q in ["theme", "x" * 200])
     assert length_bucket("hi") == "short"
@@ -74,13 +87,50 @@ def test_intent_and_length_closed_enums():
     assert length_bucket("x" * 50) in LENGTH_BUCKETS
 
 
+def test_intent_focus_finer_than_class():
+    assert classify_intent_focus("What is my editor theme preference?") == "theme"
+    assert classify_intent_focus("Which monospace font do I prefer?") == "font"
+    assert classify_intent_focus("What UI language do I prefer?") == "language"
+    assert classify_intent_focus("Afternoon drink preference?") == "drink"
+    assert classify_intent_focus("zzz") == "other"
+    assert classify_intent_focus("theme") in INTENT_FOCUSES
+
+
 def test_query_enrichment_has_no_raw_query():
     q = "What is my editor theme preference?"
     enr = query_enrichment(q)
-    assert set(enr.keys()) == {"intent_class", "length_bucket"}
+    assert set(enr.keys()) == {"intent_class", "intent_focus", "length_bucket"}
     assert q not in enr.values()
     assert "query" not in enr
     assert "query_preview" not in enr
+
+
+def test_topic_family_and_overlap_ontology():
+    assert topic_family(["preference", "ui", "theme"]) == "ui_theme"
+    assert topic_family(["preference", "locale", "language"]) == "locale_lang"
+    assert topic_family(["noise", "sports"]) == "noise"
+    assert topic_family(["overshare", "health"]) == "overshare"
+    assert topic_family(["x"]) == "other"
+    assert topic_family(["theme"]) in TOPIC_FAMILIES
+    assert overlap_tag_count(["preference", "ui", "theme"], "preference_ui") >= 2
+    assert overlap_tag_count(["noise"], "preference_ui") == 0
+    fit = intent_topic_fit(
+        intent_class="preference_ui",
+        intent_focus="theme",
+        family="ui_theme",
+        overlap=3,
+    )
+    assert fit == "strong_match"
+    assert fit in FIT_CLASSES
+    assert (
+        intent_topic_fit(
+            intent_class="preference_ui",
+            intent_focus="theme",
+            family="noise",
+            overlap=0,
+        )
+        == "mismatch"
+    )
 
 
 def test_stub_tags_capped_and_allowlisted():
@@ -93,17 +143,58 @@ def test_stub_tags_capped_and_allowlisted():
         {
             "node_id": "n1",
             "kind": "fact",
-            "tags": ["preference", "ui"],
+            "tags": ["preference", "ui", "theme"],
             "degree": 1,
             "last_touch": "2026-09-22T00:00:00Z",
             "local_score": 0.8,
             "tokens_est": 12,
             "content": "LEAK",
-        }
+            "salience": 0.9,
+        },
+        intent_class="preference_ui",
+        intent_focus="theme",
+        rank_in_topk=1,
+        salience=0.9,
     )
     assert "content" not in d
-    assert d["stub_tags"] == stub_tags(["preference", "ui"])
+    assert d["stub_tags"] == stub_tags(["preference", "ui", "theme"])
+    assert d["topic_family"] == "ui_theme"
+    assert d["intent_topic_fit"] == "strong_match"
+    assert d["candidate_rank_in_topk"] == 1
+    assert d["salience_bucket"] == "high"
+    assert d["stub_token_bucket"] == "small"
+    assert d["overlap_tag_count"] >= 2
     assert set(d.keys()) <= ALLOWED_OUTBOUND_KEYS
+
+
+def test_enrich_candidate_dicts_assigns_ranks():
+    cands = [
+        {
+            "node_id": "a",
+            "kind": "fact",
+            "tags": ["theme", "ui"],
+            "degree": 1,
+            "last_touch": "2026-09-22T00:00:00Z",
+            "local_score": 0.9,
+            "tokens_est": 10,
+        },
+        {
+            "node_id": "b",
+            "kind": "fact",
+            "tags": ["noise"],
+            "degree": 0,
+            "last_touch": "2026-09-22T00:00:00Z",
+            "local_score": 0.2,
+            "tokens_est": 8,
+        },
+    ]
+    out = enrich_candidate_dicts(
+        cands, intent_class="preference_ui", intent_focus="theme"
+    )
+    assert out[0]["candidate_rank_in_topk"] == 1
+    assert out[1]["candidate_rank_in_topk"] == 2
+    assert out[0]["intent_topic_fit"] == "strong_match"
+    assert out[1]["intent_topic_fit"] == "mismatch"
 
 
 def test_http_jev_state_includes_enrichment_not_raw_query():
@@ -118,6 +209,7 @@ def test_http_jev_state_includes_enrichment_not_raw_query():
             local_score=0.85,
             tokens_est=24,
             content="dark mode SECRET",
+            salience=0.9,
         )
     ]
     mock_resp = MagicMock()
@@ -153,6 +245,7 @@ def test_http_jev_state_includes_enrichment_not_raw_query():
     state = payload["state"]
     assert state["query_hash"] == hashlib.sha256(q.encode()).hexdigest()
     assert state["intent_class"] == "preference_ui"
+    assert state["intent_focus"] == "theme"
     assert state["length_bucket"] == "short"
     assert "query_preview" not in state
     assert "query" not in state
@@ -160,8 +253,12 @@ def test_http_jev_state_includes_enrichment_not_raw_query():
     cand0 = state["candidates"][0]
     assert "stub_tags" in cand0
     assert "theme" in cand0["stub_tags"]
+    assert cand0["topic_family"] == "ui_theme"
+    assert cand0["intent_topic_fit"] == "strong_match"
+    assert cand0["candidate_rank_in_topk"] == 1
+    assert cand0["salience_bucket"] == "high"
     assert "content" not in cand0
     qs = payload["questions"]
     hyd = qs["pref_theme__hydrate_action"]
-    assert "intent_class" in hyd["instructions"]
-    assert "stub_tags" in str(hyd["criteria"])
+    assert "intent_focus" in hyd["instructions"]
+    assert "intent_topic_fit" in str(hyd["criteria"])

@@ -60,9 +60,10 @@ class MemoryGate:
         """Redact → one Jev batch (fan-out) → policy. Order preserved (no rerank)."""
         redacted = redact_state(candidates)
         self.last_redacted = redacted
+        # Pass raw Candidates so HttpJev can derive salience_bucket; client redacts.
         responses = self.client.decide_hydrate(
             query,
-            redacted,
+            candidates,
             optional_network=self.optional_network,
             optional_reflect=self.optional_reflect,
         )

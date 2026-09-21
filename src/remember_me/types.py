@@ -141,6 +141,8 @@ class Candidate(BaseModel):
     horizon: Horizon = Horizon.WORKING
     content_ref: str = ""
     content: str | None = None
+    # Local-only; used to derive salience_bucket for outbound enrichment.
+    salience: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class RedactedCandidate(BaseModel):

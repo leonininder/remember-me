@@ -1,0 +1,231 @@
+{
+  "label": "LIVE smoke enrich v2",
+  "promotion_status": "NON_PROMOTE",
+  "thresholds": {
+    "T_ACCEPT": 0.85,
+    "T_ESCALATE": 0.55
+  },
+  "include_raw_query": false,
+  "calls": [
+    {
+      "query_id": "q01_ui_theme",
+      "gold": [
+        "pref_theme_dark"
+      ],
+      "latency_ms": 438.46,
+      "enrichment": {
+        "intent_class": "preference_ui",
+        "intent_focus": "theme",
+        "length_bucket": "short"
+      },
+      "actions": [
+        [
+          "pref_theme_dark",
+          "hydrate_full",
+          1.0,
+          false
+        ],
+        [
+          "pref_editor_vim",
+          "stub_only",
+          0.99,
+          false
+        ],
+        [
+          "edge_theme_font",
+          "stub_only",
+          1.0,
+          false
+        ]
+      ],
+      "hydrated_n": 3,
+      "fail_closed_n": 0,
+      "escalate_n": 0,
+      "response_model": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 2558,
+        "output_tokens": 361
+      },
+      "outbound_candidate_keys": [
+        "candidate_rank_in_topk",
+        "degree",
+        "intent_topic_fit",
+        "kind",
+        "last_touch",
+        "local_score",
+        "node_id",
+        "overlap_tag_count",
+        "salience_bucket",
+        "stub_tags",
+        "stub_token_bucket",
+        "tags",
+        "tokens_est",
+        "topic_family"
+      ],
+      "sample_candidate": {
+        "node_id": "pref_theme_dark",
+        "topic_family": "ui_theme",
+        "intent_topic_fit": "strong_match",
+        "overlap_tag_count": 3,
+        "candidate_rank_in_topk": 1,
+        "salience_bucket": "mid",
+        "stub_token_bucket": "tiny",
+        "stub_tags": [
+          "preference",
+          "ui",
+          "theme"
+        ]
+      },
+      "has_stub_tags": true
+    },
+    {
+      "query_id": "q02_ui_font",
+      "gold": [
+        "pref_theme_font"
+      ],
+      "latency_ms": 400.28,
+      "enrichment": {
+        "intent_class": "preference_ui",
+        "intent_focus": "font",
+        "length_bucket": "short"
+      },
+      "actions": [
+        [
+          "pref_theme_font",
+          "hydrate_full",
+          1.0,
+          false
+        ],
+        [
+          "pref_test_first",
+          "skip",
+          1.0,
+          false
+        ],
+        [
+          "pref_meeting_async",
+          "skip",
+          0.33,
+          false
+        ]
+      ],
+      "hydrated_n": 1,
+      "fail_closed_n": 0,
+      "escalate_n": 0,
+      "response_model": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 2561,
+        "output_tokens": 363
+      },
+      "outbound_candidate_keys": [
+        "candidate_rank_in_topk",
+        "degree",
+        "intent_topic_fit",
+        "kind",
+        "last_touch",
+        "local_score",
+        "node_id",
+        "overlap_tag_count",
+        "salience_bucket",
+        "stub_tags",
+        "stub_token_bucket",
+        "tags",
+        "tokens_est",
+        "topic_family"
+      ],
+      "sample_candidate": {
+        "node_id": "pref_theme_font",
+        "topic_family": "ui_font",
+        "intent_topic_fit": "strong_match",
+        "overlap_tag_count": 3,
+        "candidate_rank_in_topk": 1,
+        "salience_bucket": "mid",
+        "stub_token_bucket": "tiny",
+        "stub_tags": [
+          "preference",
+          "ui",
+          "font"
+        ]
+      },
+      "has_stub_tags": true
+    },
+    {
+      "query_id": "q03_locale_lang",
+      "gold": [
+        "pref_lang_zh_tw"
+      ],
+      "latency_ms": 450.11,
+      "enrichment": {
+        "intent_class": "preference_locale",
+        "intent_focus": "language",
+        "length_bucket": "short"
+      },
+      "actions": [
+        [
+          "pref_lang_zh_tw",
+          "hydrate_full",
+          1.0,
+          false
+        ],
+        [
+          "pref_theme_dark",
+          "skip",
+          0.35,
+          false
+        ],
+        [
+          "pref_test_first",
+          "skip",
+          1.0,
+          false
+        ]
+      ],
+      "hydrated_n": 1,
+      "fail_closed_n": 0,
+      "escalate_n": 0,
+      "response_model": "jev-1.13.0",
+      "usage": {
+        "input_tokens": 2564,
+        "output_tokens": 366
+      },
+      "outbound_candidate_keys": [
+        "candidate_rank_in_topk",
+        "degree",
+        "intent_topic_fit",
+        "kind",
+        "last_touch",
+        "local_score",
+        "node_id",
+        "overlap_tag_count",
+        "salience_bucket",
+        "stub_tags",
+        "stub_token_bucket",
+        "tags",
+        "tokens_est",
+        "topic_family"
+      ],
+      "sample_candidate": {
+        "node_id": "pref_lang_zh_tw",
+        "topic_family": "locale_lang",
+        "intent_topic_fit": "strong_match",
+        "overlap_tag_count": 3,
+        "candidate_rank_in_topk": 1,
+        "salience_bucket": "mid",
+        "stub_token_bucket": "tiny",
+        "stub_tags": [
+          "preference",
+          "locale",
+          "language"
+        ]
+      },
+      "has_stub_tags": true
+    }
+  ],
+  "confidence_summary": {
+    "n": 9,
+    "min": 0.33,
+    "max": 1.0,
+    "mean": 0.852
+  },
+  "jev_calls": 3
+}

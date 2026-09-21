@@ -128,9 +128,14 @@ class FakeJev:
             outbound = redact_to_dicts(candidates)  # type: ignore[arg-type]
         else:
             outbound = [c.model_dump(mode="json") for c in candidates]  # type: ignore[union-attr]
-        from remember_me.enrich import enrich_candidate_dicts
+        from remember_me.enrich import enrich_candidate_dicts, query_enrichment
 
-        outbound = enrich_candidate_dicts(outbound)
+        qenr = query_enrichment(query)
+        outbound = enrich_candidate_dicts(
+            outbound,
+            intent_class=qenr["intent_class"],
+            intent_focus=qenr["intent_focus"],
+        )
         assert_no_secrets(outbound)
         self.last_outbound = outbound
 
@@ -422,21 +427,41 @@ class HttpJev:
     def _build_state(self, query: str, extra: dict[str, Any]) -> dict[str, Any]:
         """Build System One state: query_hash + structured enrichment; no raw query by default.
 
-        Enrichment (David/JustinSun 2026-09-22): intent_class, length_bucket, and
-        per-candidate stub_tags only — never free-text query_preview unless
+        Enrichment v2 (David/JustinSun 2026-09-22): intent_class, intent_focus,
+        length_bucket, and per-candidate stub_tags / topic_family /
+        overlap_tag_count / intent_topic_fit / candidate_rank_in_topk /
+        salience_bucket / stub_token_bucket — never free-text query_preview unless
         ``include_raw_query=True`` (opt-in; not bake-off default).
         """
         from remember_me.enrich import enrich_candidate_dicts, query_enrichment
 
+        qenr = query_enrichment(query)
         extra_out = dict(extra)
+        # Candidates are enriched in decide_hydrate (with salience/rank). Re-enrich
+        # only if the caller passed raw redacted dicts without enrichment keys.
+        def _needs_enrich(c: dict[str, Any]) -> bool:
+            return "stub_tags" not in c or "topic_family" not in c
+
         if "candidates" in extra_out and isinstance(extra_out["candidates"], list):
-            extra_out["candidates"] = enrich_candidate_dicts(extra_out["candidates"])
+            raw = extra_out["candidates"]
+            if raw and isinstance(raw[0], dict) and _needs_enrich(raw[0]):
+                extra_out["candidates"] = enrich_candidate_dicts(
+                    raw,
+                    intent_class=qenr["intent_class"],
+                    intent_focus=qenr["intent_focus"],
+                )
         if "candidate" in extra_out and isinstance(extra_out["candidate"], dict):
-            enriched = enrich_candidate_dicts([extra_out["candidate"]])
-            extra_out["candidate"] = enriched[0] if enriched else extra_out["candidate"]
+            raw_c = extra_out["candidate"]
+            if _needs_enrich(raw_c):
+                enriched = enrich_candidate_dicts(
+                    [raw_c],
+                    intent_class=qenr["intent_class"],
+                    intent_focus=qenr["intent_focus"],
+                )
+                extra_out["candidate"] = enriched[0] if enriched else raw_c
         state: dict[str, Any] = {
             "query_hash": self._query_hash(query),
-            **query_enrichment(query),
+            **qenr,
             **extra_out,
         }
         if self.include_raw_query:
@@ -457,9 +482,21 @@ class HttpJev:
             outbound = redact_to_dicts(candidates)  # type: ignore[arg-type]
         else:
             outbound = [c.model_dump(mode="json") for c in candidates]  # type: ignore[union-attr]
-        from remember_me.enrich import enrich_candidate_dicts
+        from remember_me.enrich import enrich_candidate_dicts, query_enrichment
 
-        outbound = enrich_candidate_dicts(outbound)
+        qenr = query_enrichment(query)
+        saliences: list[float | None] = []
+        if candidates and isinstance(candidates[0], Candidate):
+            for c in candidates:  # type: ignore[union-attr]
+                saliences.append(getattr(c, "salience", None))
+        else:
+            saliences = [None] * len(outbound)
+        outbound = enrich_candidate_dicts(
+            outbound,
+            intent_class=qenr["intent_class"],
+            intent_focus=qenr["intent_focus"],
+            saliences=saliences,
+        )
         assert_no_secrets(outbound)
         self.last_outbound = outbound
 
@@ -728,23 +765,25 @@ def _choice_criteria(descriptions: dict[str, str]) -> dict[str, str | None]:
 # Closed taxonomies → human-readable Choice descriptions (live API contract).
 _HYDRATE_ACTION_CRITERIA: dict[str, str] = {
     HydrateAction.HYDRATE_FULL.value: (
-        "Hydrate the full local body. Use when candidate stub_tags/kind/local_score "
-        "clearly match state.intent_class for this ask; high need and on-topic."
+        "Hydrate the full local body. Prefer when intent_topic_fit is strong_match, "
+        "candidate_rank_in_topk is 1 (or low), overlap_tag_count is high, and "
+        "topic_family aligns with state.intent_focus / intent_class; high need."
     ),
     HydrateAction.STUB_ONLY.value: (
-        "Keep a stub only (tags/kind/score). Prefer when intent_class is related but "
-        "full body is unnecessary, or confidence is mid — do not load full body."
+        "Keep a stub only (tags/kind/score). Prefer when intent_topic_fit is "
+        "weak_match or rank is mid — related but full body unnecessary."
     ),
     HydrateAction.SKIP.value: (
-        "Skip entirely. Prefer when stub_tags/kind conflict with intent_class, "
-        "intent_class is sensitive_avoid, or candidate is clearly off-topic."
+        "Skip entirely. Prefer when intent_topic_fit is mismatch, topic_family is "
+        "noise/overshare (unless intent_class is sensitive_avoid), or tags conflict "
+        "with intent_focus."
     ),
     HydrateAction.PROMOTE_DURABLE.value: (
         "Promote toward durable horizon while considering hydrate (rare)."
     ),
     HydrateAction.ESCALATE_HUMAN.value: (
-        "Escalate to a human when stub_tags and intent_class partially align but "
-        "risk/need is unclear — do not auto hydrate_full."
+        "Escalate to a human when intent_topic_fit is unknown/weak and risk/need "
+        "is unclear — do not auto hydrate_full."
     ),
     HydrateAction.OTHER.value: "None of the closed actions clearly apply.",
 }
@@ -816,27 +855,31 @@ def _hydrate_questions(
             "instructions": (
                 "Choose the hydrate action for this redacted memory candidate. "
                 "State has query_hash plus structured enrichment only: intent_class, "
-                "length_bucket, and per-candidate stub_tags/kind/local_score/tags "
+                "intent_focus, length_bucket, and per-candidate topic_family, "
+                "intent_topic_fit, overlap_tag_count, candidate_rank_in_topk, "
+                "salience_bucket, stub_token_bucket, stub_tags/kind/local_score/tags "
                 "(no raw query text unless query_preview is present). "
-                "Align stub_tags with intent_class; prefer stub_only when unsure; "
-                "skip on mismatch or sensitive_avoid."
+                "Prefer hydrate_full for strong_match + low rank; stub_only for "
+                "weak_match; skip on mismatch/noise/overshare."
             ),
             "criteria": _choice_criteria(_HYDRATE_ACTION_CRITERIA),
         },
         Q_NEED_FOR_NEXT_TURN: {
             "type": "score",
             "instructions": (
-                "How needed is this candidate for the next turn given intent_class, "
-                "length_bucket, stub_tags, kind, and local_score? Levels low→high. "
-                "Low if tags conflict with intent_class; high if tags strongly match."
+                "How needed is this candidate for the next turn given intent_focus, "
+                "intent_topic_fit, overlap_tag_count, candidate_rank_in_topk, "
+                "topic_family, and local_score? Levels low→high. "
+                "Low on mismatch; high on strong_match with rank 1."
             ),
             "criteria": list(NEED_FOR_NEXT_TURN_LEVELS),
         },
         Q_STILL_MATTERS: {
             "type": "noul",
             "instructions": (
-                "Does this candidate still matter given intent_class vs stub_tags/kind "
-                "(yes ≈ consider hydrate/stub; no ≈ safe to skip)?"
+                "Does this candidate still matter given intent_focus / intent_topic_fit "
+                "vs topic_family and stub_tags (yes ≈ consider hydrate/stub; "
+                "no ≈ safe to skip)?"
             ),
         },
     }

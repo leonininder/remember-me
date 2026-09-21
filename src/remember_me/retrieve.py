@@ -60,6 +60,7 @@ class LocalCandidateRetriever:
                     horizon=m.horizon,
                     content_ref=m.content_ref,
                     content=m.content,
+                    salience=m.salience,
                 )
             )
         scored.sort(key=lambda c: (c.local_score, c.last_touch), reverse=True)

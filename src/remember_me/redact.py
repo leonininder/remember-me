@@ -28,7 +28,15 @@ ENRICHMENT_OUTBOUND_KEYS = frozenset(
     {
         "stub_tags",  # capped tags copy
         "intent_class",  # closed query intent enum (state-level)
+        "intent_focus",  # finer closed focus enum (state-level)
         "length_bucket",  # short|medium|long (state-level)
+        # candidate-level structured signals (v2)
+        "topic_family",
+        "overlap_tag_count",
+        "intent_topic_fit",
+        "candidate_rank_in_topk",
+        "salience_bucket",
+        "stub_token_bucket",
     }
 )
 

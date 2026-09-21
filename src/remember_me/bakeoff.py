@@ -347,7 +347,8 @@ def run_bakeoff_live(
 
     # Pre-registered bars (docs/reviews/LIVE_PILOT_RECAL_2026-09-22.md) — evaluate after run.
     prec_bar = gated.precision_at_k >= (baseline.precision_at_k - 0.05)
-    over_bar = gated.overshare_rate <= baseline.overshare_rate + 1e-12
+    # Pre-reg: overshare ≤ 0.02 and not worse than B
+    over_bar = gated.overshare_rate <= min(0.02, baseline.overshare_rate + 1e-12)
     fail_bar = gated.fail_closed_rate <= 0.05
     bars_clear = bool(prec_bar and over_bar and fail_bar)
     report: dict[str, Any] = {
@@ -355,18 +356,32 @@ def run_bakeoff_live(
         "promotion_status": "PROMOTE_CANDIDATE" if bars_clear else "NON_PROMOTE",
         "enrichment": {
             "include_raw_query": False,
-            "keys": ["intent_class", "length_bucket", "stub_tags"],
+            "keys": [
+                "intent_class",
+                "intent_focus",
+                "length_bucket",
+                "stub_tags",
+                "topic_family",
+                "overlap_tag_count",
+                "intent_topic_fit",
+                "candidate_rank_in_topk",
+                "salience_bucket",
+                "stub_token_bucket",
+            ],
             "thresholds": {"T_ACCEPT": 0.85, "T_ESCALATE": 0.55},
-            "note": "Thresholds unchanged; enrichment-first (David/JustinSun 2026-09-22)",
+            "note": (
+                "Enrich v2 structured allowlist; thresholds held at 0.85/0.55 "
+                "unless held-out shows separable accept-band mass (David/JustinSun)"
+            ),
         },
         "pre_registered_bars": {
             "precision_at_k_C_ge_B_minus_0.05": prec_bar,
-            "overshare_rate_C_le_B": over_bar,
+            "overshare_rate_C_le_0.02_and_le_B": over_bar,
             "fail_closed_rate_C_le_0.05": fail_bar,
             "bars_clear": bars_clear,
             "note": (
-                "skip→admit alone does not clear ≥9.5; "
-                "precision/overshare/fail_closed required"
+                "Pre-reg: precision ≥ B−0.05; overshare ≤0.02 and ≤B; "
+                "fail_closed ≤0.05. bars_clear ≠ ≥9.5; no acceleration claim."
             ),
         },
         "k": k,

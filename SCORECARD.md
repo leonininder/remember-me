@@ -4,7 +4,7 @@
 **Card / freeze:** PS-REMEMBER-ME-2026-09-19 / freeze-2026-09-19-v1  
 **Scored:** 2026-09-19 (CST / Asia/Taipei); Phase 9.5 dual-gate refresh 2026-09-21; David adversarial 2026-09-21; **LIVE pilot 2026-09-22**  
 **Package:** `/workspace/remember-me` v0.1.0 (`remember_me`)  
-**Evidence basis:** Offline FakeJev + pytest (**140 passed**) + **LIVE HttpJev smoke/bake-off logs** (see `docs/reviews/LIVE_PILOT_2026-09-22.md`). FakeJev bake-off remains **NON-EVIDENCE** (conf ∝ local_score).
+**Evidence basis:** Offline FakeJev + pytest (offline green) + **LIVE HttpJev smoke/bake-off logs** (see `docs/reviews/LIVE_PILOT_2026-09-22.md`). FakeJev bake-off remains **NON-EVIDENCE** (conf ∝ local_score).
 
 ---
 
@@ -12,24 +12,24 @@
 
 | Dimension | Weight | Score | Notes |
 |-----------|-------:|------:|-------|
-| Evidence | 20% | **8.0** | Live smoke + `bakeoff_metrics_live.json` committed; quality claim **fails** (precision Δ negative) |
+| Evidence | 20% | **8.5** | Live enrich v2 `bakeoff_metrics_live.json`: C precision **0.727** clears B−0.05; still **not ≥9.5**; no acceleration |
 | Goal fit | 20% | **9.0** | Dual egress + escalate_human + no-rerank; Jev ≠ store ≠ ranker |
 | Runtime | 15% | **8.5** | Live System One hydrate/emit succeed on pin `jev-1.13.0`; CLI `bakeoff --live` |
 | Verification | 15% | **8.5** | HTTP chaos (offline mock) + live 200s; remote CI on main **not claimed** |
 | Safety | 10% | **9.0** | ALLOWLIST EscalationRecord + GateAuditRecord + adversarial redact |
 | License | 10% | **9.0** | MIT; pydantic/httpx clean |
 | Maintainability | 10% | **8.0** | src layout + docs + CI workflow present; **do not claim CI green on main until remote green** |
-| **Weighted overall** | 100% | **~8.5** | Live contract works; **not ≥9.5**; acceleration **falsified** on this pilot |
+| **Weighted overall** | 100% | **~8.6** | Enrich v2 quality bars clear; **not ≥9.5**; acceleration still **not** supported (latency) |
 
 ### Weighted calculation
 
 ```text
-0.20×8.0 + 0.20×9.0 + 0.15×8.5 + 0.15×8.5 + 0.10×9.0 + 0.10×9.0 + 0.10×8.0
-= 1.60 + 1.80 + 1.275 + 1.275 + 0.90 + 0.90 + 0.80
-= 8.55 ≈ **~8.5**
+0.20×8.5 + 0.20×9.0 + 0.15×8.5 + 0.15×8.5 + 0.10×9.0 + 0.10×9.0 + 0.10×8.0
+= 1.70 + 1.80 + 1.275 + 1.275 + 0.90 + 0.90 + 0.80
+= 8.65 ≈ **~8.6**
 ```
 
-Honesty note: Evidence rises above 7.5 **only** because real live logs are committed. Live bake-off **does not** support “Jev accelerates memory” (latency↑, precision↓ under current thresholds + hash-only state). **Do not advertise ≥9.5.**
+Honesty note: Evidence rises above 7.5 **only** because real live logs are committed. Enrich v2 clears precision/overshare/fail_closed bars under redacted egress; latency still ↑ vs B → **do not** claim acceleration. **Do not advertise ≥9.5.**
 
 ---
 
