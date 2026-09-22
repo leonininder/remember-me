@@ -1,6 +1,6 @@
 # PLAN — Temporal Fact Ledger (TFL) + Jev reconciliation
 
-**Status:** REVISED R3.1 — David R2 six + Justin R1–R5 (namespace/user.*, C2 banner, ontology_v0, materially-changed deep-equal, value_struct 2KiB); awaiting ≥9.5 lock — **do not open Phase B**
+**Status:** REVISED R3.2 — David PASS ≥9.5; Justin R4 pinned + seed qualifier fix; awaiting Justin ≥9.5 for full Phase A lock
 **Owner:** Leon (via 小助手)  
 **Repo tip context:** remember-me PREVIEW / AWC (~8.6–8.8) after enrich v2 + remote CI; Leon signed PREVIEW/AWC 2026-09-22  
 **Codename:** Temporal Fact Ledger (TFL) — working title; supersedes “append-only memory.md” as the memory hygiene path  
@@ -519,7 +519,6 @@ Minimal normative JSON seed (Phase F expands to `docs/specs/TFL_PROTOCOL.md`):
     "entity": "user",
     "attribute": "weather",
     "qualifier": "local",
-    "qualifier": null,
     "value_struct": {"condition": "rainy"},
     "observed_at": "2026-09-22T09:00:00+08:00",
     "source_event_id": "evt_weather_obs_20260922",
