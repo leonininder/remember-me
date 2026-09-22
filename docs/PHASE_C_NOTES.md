@@ -1,3 +1,5 @@
+**Phase C exit:** CLOSED 2026-09-22 (David redact PASS).
+
 # TFL Phase C — JevReconcileGate (implementation notes)
 
 **Date:** 2026-09-22 (Asia/Taipei)  

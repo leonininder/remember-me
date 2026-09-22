@@ -1,6 +1,7 @@
 # PLAN — Temporal Fact Ledger (TFL) + Jev reconciliation
 
-**Status:** **PHASE A LOCKED** 2026-09-22 — David PASS ≥9.5 (R3) + Justin PASS ≥9.5 (R3.1 @ 07e0fb1 / tip f955505+). PRODUCT/acceleration still REJECT (separate). Phase B may open; Phase C human-redact exit still required.
+**Status:** **PHASE A LOCKED** 2026-09-22 — David PASS ≥9.5 (R3) + Justin PASS ≥9.5 (R3.1 @ 07e0fb1 / tip f955505+). PRODUCT/acceleration still REJECT (separate). Phase B may open; Phase C human-redact exit still required.  
+**Phase C:** CLOSED 2026-09-22 (David independent redact PASS @ 5fab570). Residuals A–D tracked. Phase D next.
 **Owner:** Leon (via 小助手)  
 **Repo tip context:** remember-me PREVIEW / AWC (~8.6–8.8) after enrich v2 + remote CI; Leon signed PREVIEW/AWC 2026-09-22  
 **Phase A lock:** David `docs/reviews/DAVID_TFL_PLAN_2026-09-22_R3.md` · Justin `docs/reviews/JUSTIN_SUN_2026-09-22_TFL_PLAN_R31_LOCK.md`  
