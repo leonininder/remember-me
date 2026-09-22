@@ -1,0 +1,54 @@
+{
+  "ontology_id": "tfl_ontology_v0",
+  "entities": ["user", "agent", "quarantine"],
+  "attributes": {
+    "user": {
+      "weather": {
+        "qualifiers": ["local", "forecast_today"],
+        "value_schema": {
+          "type": "object",
+          "required": ["condition"],
+          "additionalProperties": false,
+          "properties": {
+            "condition": {"type": "string", "enum": ["sunny", "rainy", "cloudy", "other"]}
+          }
+        }
+      },
+      "insects": {
+        "qualifiers": ["play", "safety"],
+        "value_schema": {
+          "type": "object",
+          "required": ["stance"],
+          "additionalProperties": false,
+          "properties": {"stance": {"type": "string", "maxLength": 64}}
+        }
+      },
+      "home": {
+        "qualifiers": ["city"],
+        "value_schema": {
+          "type": "object",
+          "required": ["city"],
+          "additionalProperties": false,
+          "properties": {"city": {"type": "string", "maxLength": 64}}
+        }
+      },
+      "pref": {
+        "qualifiers": ["theme"],
+        "value_schema": {
+          "type": "object",
+          "required": ["theme"],
+          "additionalProperties": false,
+          "properties": {"theme": {"enum": ["dark", "light", "system"]}}
+        }
+      }
+    }
+  },
+  "fact_key_examples": [
+    "user.weather.local",
+    "user.weather.forecast_today",
+    "user.insects.play",
+    "user.insects.safety",
+    "user.home.city",
+    "user.pref.theme"
+  ]
+}

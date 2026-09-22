@@ -1,0 +1,43 @@
+{
+  "$id": "candidate_fact.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entity", "attribute", "value_struct", "observed_at", "source_event_id", "extract_method"],
+  "properties": {
+    "entity": {
+      "type": "string",
+      "description": "Allowlisted entity id, e.g. user, home, agent; lowercase snake; max 64"
+    },
+    "attribute": {
+      "type": "string",
+      "description": "Allowlisted attribute from ontology enum OR quarantine bucket attribute"
+    },
+    "qualifier": {
+      "type": ["string", "null"],
+      "description": "Optional disambiguator, e.g. today, local; lowercase snake; max 64"
+    },
+    "value_struct": {
+      "type": "object",
+      "description": "Structured value only — never a free-text diary blob as SoT",
+      "additionalProperties": true
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Producer-claimed observation time (metadata; see clock-skew policy)"
+    },
+    "source_event_id": { "type": "string" },
+    "extract_method": {
+      "type": "string",
+      "enum": ["deterministic", "llm_propose", "manual"]
+    },
+    "proposed_fact_key": {
+      "type": ["string", "null"],
+      "description": "Optional LLM suggestion; ignored unless validator accepts ontology path"
+    },
+    "salience_hint": {
+      "type": ["string", "null"],
+      "enum": ["childhood_play", "adult_safety", "routine", "ephemeral", null]
+    }
+  }
+}
