@@ -1,6 +1,6 @@
 # PLAN — Temporal Fact Ledger (TFL) + Jev reconciliation
 
-**Status:** REVISED draft after Justin ~8.5 (must-fixes 1–11) + David ≈8.7 (must-fixes 1–12); awaiting re-score + David / Justin  
+**Status:** REVISED R3 after David R2 ≈9.3 (6 remaining must-fixes landed); awaiting ≥9.5 re-score — **do not open Phase B**
 **Owner:** Leon (via 小助手)  
 **Repo tip context:** remember-me PREVIEW / AWC (~8.6–8.8) after enrich v2 + remote CI; Leon signed PREVIEW/AWC 2026-09-22  
 **Codename:** Temporal Fact Ledger (TFL) — working title; supersedes “append-only memory.md” as the memory hygiene path  
@@ -140,7 +140,70 @@ JSON Schema-ish closed fields. **Only** these may enter the gate; unknown proper
 - `extract_method=llm_propose`: LLM may emit a CandidateFact **struct**; code runs schema validate + ontology allowlist.  
 - **Never** becomes ledger SoT until validate passes.  
 - Invalid / unknown entity|attribute → route to `quarantine.*` FactKey bucket or escalate; **never append prose**.  
-- `value_struct` MUST NOT be a single unstructured `{"text": "<diary>"}` as the only content for admit; diary stubs may appear only as redacted `stub_hash` fields for audit, not as active belief value.
+- `value_struct` is **closed for admit** (David R2 #1): enforce per-attribute schemas from ontology_v0 with additionalProperties false, **or** global caps max_depth<=3, each string <=128 chars, and **forbid** sole keys named text/body/prose/diary/notes. Validator reject to quarantine. Diary only as redacted stub_hash for audit, never active belief value.
+- **Seed ontology (David R2 #2):** normative path `fixtures/memorybench_tfl/schema/ontology_v0.json` (inline stub in §4.2.1). v0 FactKeys include `user.weather.local`, `user.weather.forecast_today`, `user.insects.play`, `user.insects.safety`, `user.home.city`, `user.pref.theme`.
+
+
+### 4.2.1 Seed ontology stub (normative for examples)
+
+Path: `fixtures/memorybench_tfl/schema/ontology_v0.json` (file lands Phase B0; content below is PLAN-normative now):
+
+```json
+{
+  "ontology_id": "tfl_ontology_v0",
+  "entities": ["user", "agent", "quarantine"],
+  "attributes": {
+    "user": {
+      "weather": {
+        "qualifiers": ["local", "forecast_today"],
+        "value_schema": {
+          "type": "object",
+          "required": ["condition"],
+          "additionalProperties": false,
+          "properties": {
+            "condition": {"type": "string", "enum": ["sunny", "rainy", "cloudy", "other"]}
+          }
+        }
+      },
+      "insects": {
+        "qualifiers": ["play", "safety"],
+        "value_schema": {
+          "type": "object",
+          "required": ["stance"],
+          "additionalProperties": false,
+          "properties": {"stance": {"type": "string", "maxLength": 64}}
+        }
+      },
+      "home": {
+        "qualifiers": ["city"],
+        "value_schema": {
+          "type": "object",
+          "required": ["city"],
+          "additionalProperties": false,
+          "properties": {"city": {"type": "string", "maxLength": 64}}
+        }
+      },
+      "pref": {
+        "qualifiers": ["theme"],
+        "value_schema": {
+          "type": "object",
+          "required": ["theme"],
+          "additionalProperties": false,
+          "properties": {"theme": {"enum": ["dark", "light", "system"]}}
+        }
+      }
+    }
+  },
+  "fact_key_examples": [
+    "user.weather.local",
+    "user.weather.forecast_today",
+    "user.insects.play",
+    "user.insects.safety",
+    "user.home.city",
+    "user.pref.theme"
+  ]
+}
+```
 
 ### 4.3 FactKey minting, normalization, caps — Justin #1 / David #2
 
@@ -154,7 +217,7 @@ JSON Schema-ish closed fields. **Only** these may enter the gate; unknown proper
 | Deterministic hash | Optional secondary id: `sha256(fact_key)[:16]` for storage; human key remains primary |
 | Collision | Same normalized string = same FactKey. Distinct value shapes for same key → reconcile (same_fact / supersedes / contradicts), not silent dual-active |
 | Multi-value | v0: one **active** value_struct per FactKey. Lists inside `value_struct` OK if schema allows; no parallel active versions |
-| Namespace / ownership | Prefix entity = owner scope (`user.*`, `home.*`, `agent.*`, `quarantine.*`). Cross-entity write requires escalate_human |
+| Namespace / ownership | v0 **all domain examples under `user.*`** (David R2 #3): `user.weather.*`, `user.insects.*`, `user.home.*`, `user.pref.*`; plus `agent.*` / `quarantine.*`. Bare `weather.*` / `insects.*` are **illegal** mint targets. Cross-owner write → escalate_human |
 | Caps | Max **active** FactKeys per entity: **64** (soft); over → expire lowest-salience ephemeral or escalate. Max active versions globally soft-warned at 512 |
 
 ### 4.4 Data model (v0)
@@ -179,13 +242,13 @@ QuarantineItem: { id, candidate, reason, enqueued_at, attempts, escalate_after }
 ```
 
 **Same-key weather example:**  
-- Day1: `weather.local = sunny` valid_from=D1  
+- Day1: `user.weather.local = sunny` valid_from=D1  
 - Day2: Jev `supersedes` same FactKey → Day1 `valid_to=D2`, Day2 active  
 - Ask “what’s the weather belief *as of now*?” → one row
 
 **Insects / salience path:**  
-- Child: `insects.play = attractive`, `salience_tier=childhood_play`  
-- Adult: new candidate `insects.safety = caution_toxic_species`, `salience_tier=adult_safety`  
+- Child: `user.insects.play = attractive`, `salience_tier=childhood_play`  
+- Adult: new candidate `user.insects.safety = caution_toxic_species`, `salience_tier=adult_safety`  
 - Jev `relation=contradicts` + high `adult_safety` → APPLY supersede winner + demote old from ProfileCompiler (see §4.6)
 
 ### 4.5 Cross-key contradiction policy — Justin #2
@@ -194,7 +257,7 @@ QuarantineItem: { id, candidate, reason, enqueued_at, attempts, escalate_after }
 
 1. `TopicIndex` may return same-FactKey hits **and** (Phase C2+) ontology / embedding neighbors.  
 2. MVP (Phase B+C): **same-FactKey only**; embedding-neighbor deferred (see §6 MVP cut). When neighbors enabled, pin local embed model in PLAN addendum before use.  
-3. If Jev returns `relation=contradicts` across **different** FactKeys (e.g. `weather.local` vs `weather.forecast_today`):  
+3. If Jev returns `relation=contradicts` across **different** FactKeys (e.g. `user.weather.local` vs `user.weather.forecast_today`):  
    - APPLY = **supersede** the **winner key’s** active version (new candidate becomes active on its key), **and**  
    - if `should_forget_incumbent=true` (Noul high / above T_accept): set loser keys’ active versions to `superseded` or `tombstoned` per policy, with `should_forget_incumbent` recorded, **and**  
    - link both sides via `conflicts_with[]` on each FactVersion.  
@@ -204,11 +267,13 @@ QuarantineItem: { id, candidate, reason, enqueued_at, attempts, escalate_after }
 
 | | Key | value | receive_ts |
 |-|-----|-------|------------|
-| Incumbent | `weather.local` | `{condition: sunny}` | T0 |
-| New | `weather.forecast_today` | `{condition: rainy}` | T1 (>T0) |
+| Incumbent | `user.weather.local` | `{condition: sunny}` | T0 |
+| New | `user.weather.forecast_today` | `{condition: rainy}` | T1 (>T0) |
+
+> **C2 illustrative only** (David R2 #6). Neighbor cross-key auto-apply is not MVP; C1/MVP: unresolved cross-key contradicts without forget → always escalate_human.
 
 - TopicIndex returns neighbor pair; Jev: `relation=contradicts`, `should_forget_incumbent=true`, `needs_human=false`, `salience_tier` routine.  
-- APPLY: activate rainy on `weather.forecast_today`; supersede sunny on `weather.local`; set `conflicts_with` both ways; ProfileCompiler injects rainy only.
+- APPLY: C2 target: activate rainy on `user.weather.forecast_today`; supersede sunny on `user.weather.local`; set `conflicts_with` both ways; ProfileCompiler injects rainy only.
 
 ### 4.6 Jev question pack + APPLY map — Justin #3 / David #3 / David #11
 
@@ -221,7 +286,7 @@ All Choice criteria = **dict** `{key: description}`; Score = ordered **string** 
 | `ttl_urgency` | Score | permanent → hours |
 | `profile_worthiness` | Noul | Belongs in static/dynamic profile inject |
 | `needs_human` | Noul | Sensitive → escalate (see taxonomy) |
-| `salience_tier` | Choice **or** Score | `childhood_play` \| `adult_safety` \| `routine` \| `ephemeral` |
+| `salience_tier` | **Choice only** (v0; David R2 #5 — not Score) | `childhood_play` / `adult_safety` / `routine` / `ephemeral` |
 
 **v0 APPLY list (merge DROPPED — non-goal):**  
 `upsert | supersede | expire | tombstone | escalate_human | no_op`
@@ -235,7 +300,7 @@ All Choice criteria = **dict** `{key: description}`; Score = ordered **string** 
 | `supersedes` | false | false | — | **upsert** new version still; incumbent may remain until TTL — prefer expire if ttl_urgency high |
 | `contradicts` | true | false | — | **supersede** winner; forget/demote loser (incl. cross-key §4.5) |
 | `contradicts` | true | false | **adult_safety** high vs childhood_play | **supersede** + **demote** old from ProfileCompiler (insects path) |
-| `contradicts` | false | false | — | keep both active only if different keys **and** not neighbors; else **escalate_human** |
+| `contradicts` | false | false | — | **MVP/C1: always escalate_human** (David R2 #6). Never keep dual-active beliefs in v0. |
 | `side_thread` | — | false | — | **upsert** on a **new** FactKey (code mints from ontology); incumbent untouched (**no_op** on incumbent) |
 | `noise` | — | false | — | **no_op** (optionally quarantine candidate) |
 | `other` | — | false | — | **escalate_human** or quarantine |
@@ -278,7 +343,7 @@ Default when taxonomy class unknown but `needs_human=true`: **escalate_human** (
 
 When Jev **deny / timeout / malformed / unavailable** OR schema fail OR cost abort:
 
-1. Enqueue `QuarantineItem` (bound size **N=256**; oldest durable to disk spill or drop-with-audit if overflow — **never** md-append).  
+1. Enqueue `QuarantineItem` (bound size **N=256**; overflow → **spill-to-disk only** — David R2 #4 **forbid drop**). If spill exhausted → **block new auto-admits** + escalate_human (audit). **Never** discard CandidateFacts; **never** md-append.  
 2. Drain: human review UI / CLI admit, or retry when Jev healthy, or escalate_human.  
 3. **Explicit ban:** no fallback writing CandidateFact prose into `MEMORY.md` / `AGENTS.md` as SoT.
 
@@ -440,7 +505,7 @@ Minimal normative JSON seed (Phase F expands to `docs/specs/TFL_PROTOCOL.md`):
   "ledger_schema_version": "tfl_ledger_v0",
   "example_id": "weather_local_sunny_to_rainy",
   "incumbent": {
-    "fact_key": "weather.local",
+    "fact_key": "user.weather.local",
     "value_struct": {"condition": "sunny"},
     "valid_from": "2026-09-21T10:00:00+08:00",
     "receive_ts": "2026-09-21T10:00:01+08:00",
@@ -448,8 +513,9 @@ Minimal normative JSON seed (Phase F expands to `docs/specs/TFL_PROTOCOL.md`):
     "salience_tier": "ephemeral"
   },
   "candidate": {
-    "entity": "weather",
-    "attribute": "local",
+    "entity": "user",
+    "attribute": "weather",
+    "qualifier": "local",
     "qualifier": null,
     "value_struct": {"condition": "rainy"},
     "observed_at": "2026-09-22T09:00:00+08:00",
@@ -457,7 +523,7 @@ Minimal normative JSON seed (Phase F expands to `docs/specs/TFL_PROTOCOL.md`):
     "extract_method": "deterministic",
     "salience_hint": "ephemeral"
   },
-  "minted_fact_key": "weather.local",
+  "minted_fact_key": "user.weather.local",
   "questions": [
     "relation",
     "should_forget_incumbent",
