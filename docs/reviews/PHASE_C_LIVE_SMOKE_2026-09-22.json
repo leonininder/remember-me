@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "model_pin": "jev-1.13.0",
+  "action": "supersede",
+  "applied": true,
+  "fail_closed": false,
+  "reason": "supersedes ¬forget but ttl_urgency high → supersede/expire path",
+  "fact_key": "user.weather.local",
+  "quarantine_count": 0,
+  "usage": {
+    "input_tokens": 1093,
+    "output_tokens": 201
+  },
+  "response_model": "jev-1.13.0",
+  "outbound_keys": [
+    "incumbents",
+    "new"
+  ],
+  "outbound_new_keys": [
+    "confidence",
+    "conflict_keys",
+    "fact_key",
+    "receive_ts",
+    "salience_tier",
+    "stub_hash",
+    "valid_from",
+    "value_struct"
+  ]
+}

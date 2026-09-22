@@ -34,17 +34,29 @@ jobs:
       - name: Ruff (tfl)
         run: ruff check src/remember_me/tfl tests/tfl
       - name: TFL ledger property tests
-        run: pytest -q tests/tfl
+        run: pytest -q tests/tfl/test_ledger_props.py tests/tfl/test_ontology_mint.py tests/tfl/test_validate.py tests/tfl/test_quarantine.py
 
-  # Phase C commitment (stub job — real FakeJev reconcile + chaos lands in Phase C)
   tfl-reconcile-unit:
     name: tfl-reconcile-unit
     runs-on: ubuntu-latest
-    if: false  # enabled when Phase C code lands
     steps:
       - uses: actions/checkout@v4
-      - name: Placeholder
-        run: echo "Phase C — tfl-reconcile-unit not yet enabled"
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Ruff (tfl reconcile)
+        run: ruff check src/remember_me/tfl tests/tfl
+      - name: TFL reconcile unit + chaos + redact (FakeJev)
+        run: >
+          pytest -q
+          tests/tfl/test_reconcile_policy.py
+          tests/tfl/test_reconcile_fake.py
+          tests/tfl/test_reconcile_chaos.py
+          tests/tfl/test_reconcile_redact.py
+          tests/tfl/test_quarantine.py
 
   # Phase D commitment
   tfl-memorybench:
