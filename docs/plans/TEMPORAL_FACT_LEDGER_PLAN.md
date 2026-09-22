@@ -1,6 +1,6 @@
 # PLAN — Temporal Fact Ledger (TFL) + Jev reconciliation
 
-**Status:** REVISED R3 after David R2 ≈9.3 (6 remaining must-fixes landed); awaiting ≥9.5 re-score — **do not open Phase B**
+**Status:** REVISED R3.1 — David R2 six + Justin R1–R5 (namespace/user.*, C2 banner, ontology_v0, materially-changed deep-equal, value_struct 2KiB); awaiting ≥9.5 lock — **do not open Phase B**
 **Owner:** Leon (via 小助手)  
 **Repo tip context:** remember-me PREVIEW / AWC (~8.6–8.8) after enrich v2 + remote CI; Leon signed PREVIEW/AWC 2026-09-22  
 **Codename:** Temporal Fact Ledger (TFL) — working title; supersedes “append-only memory.md” as the memory hygiene path  
@@ -140,7 +140,7 @@ JSON Schema-ish closed fields. **Only** these may enter the gate; unknown proper
 - `extract_method=llm_propose`: LLM may emit a CandidateFact **struct**; code runs schema validate + ontology allowlist.  
 - **Never** becomes ledger SoT until validate passes.  
 - Invalid / unknown entity|attribute → route to `quarantine.*` FactKey bucket or escalate; **never append prose**.  
-- `value_struct` is **closed for admit** (David R2 #1): enforce per-attribute schemas from ontology_v0 with additionalProperties false, **or** global caps max_depth<=3, each string <=128 chars, and **forbid** sole keys named text/body/prose/diary/notes. Validator reject to quarantine. Diary only as redacted stub_hash for audit, never active belief value.
+- `value_struct` is **closed for admit** (David R2 #1): enforce per-attribute schemas from ontology_v0 with additionalProperties false, **or** global caps max_depth<=3, each string <=128 chars, **entire value_struct <=2048 bytes (2 KiB)** UTF-8 canonical form, and **forbid** sole keys named text/body/prose/diary/notes. Validator reject to quarantine. Diary only as redacted stub_hash for audit, never active belief value.
 - **Seed ontology (David R2 #2):** normative path `fixtures/memorybench_tfl/schema/ontology_v0.json` (inline stub in §4.2.1). v0 FactKeys include `user.weather.local`, `user.weather.forecast_today`, `user.insects.play`, `user.insects.safety`, `user.home.city`, `user.pref.theme`.
 
 
@@ -322,6 +322,9 @@ All Choice criteria = **dict** `{key: description}`; Score = ordered **string** 
 | `other_sensitive` | catch-all when Noul high | escalate |
 
 Default when taxonomy class unknown but `needs_human=true`: **escalate_human** (fail-closed).
+
+
+**“Materially changed” (Justin R4):** `value_struct` is materially changed iff canonical JSON differs: UTF-8, object keys sorted recursively, no insignificant whitespace, numbers as JSON numbers (not strings). Compare **only** `value_struct` — ignore confidence, TTL hints, salience_tier, stub_hash. If canonical deep-equal → `same_fact` upsert metadata only; if not equal → treat as `supersedes` (new FactVersion).
 
 ### 4.7 Incumbent bounds, redact allowlist, cost — Justin #7 / David #5 / David #10
 
