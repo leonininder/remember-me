@@ -1,8 +1,9 @@
 # PLAN — Temporal Fact Ledger (TFL) + Jev reconciliation
 
-**Status:** REVISED R3.2 — David PASS ≥9.5; Justin R4 pinned + seed qualifier fix; awaiting Justin ≥9.5 for full Phase A lock
+**Status:** **PHASE A LOCKED** 2026-09-22 — David PASS ≥9.5 (R3) + Justin PASS ≥9.5 (R3.1 @ 07e0fb1 / tip f955505+). PRODUCT/acceleration still REJECT (separate). Phase B may open; Phase C human-redact exit still required.
 **Owner:** Leon (via 小助手)  
 **Repo tip context:** remember-me PREVIEW / AWC (~8.6–8.8) after enrich v2 + remote CI; Leon signed PREVIEW/AWC 2026-09-22  
+**Phase A lock:** David `docs/reviews/DAVID_TFL_PLAN_2026-09-22_R3.md` · Justin `docs/reviews/JUSTIN_SUN_2026-09-22_TFL_PLAN_R31_LOCK.md`  
 **Codename:** Temporal Fact Ledger (TFL) — working title; supersedes “append-only memory.md” as the memory hygiene path  
 **Rule:** Iterate this PLAN until both reviewers score it **≥9.5/10** or explicitly list remaining PLAN gaps; do not start large Phase B–F code until the PLAN clears **or** Leon waives in writing.
 
