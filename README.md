@@ -37,12 +37,14 @@ remember-me score-report
 
 ### Screenshot / GIF
 
+**Hero media not shipped.** There is no `assets/demo.gif` in this tree (do not link a missing file — that would 404).
+
 | Asset | Status |
 |-------|--------|
-| [`assets/demo.gif`](assets/demo.gif) | **TODO** — capture per [`assets/README.md`](assets/README.md) |
-| Fallback | Terminal output of `remember-me demo` + Mermaid below |
+| Capture instructions | [`assets/README.md`](assets/README.md) — **TODO:** record `demo.gif` (asciinema/ffmpeg) before linking it from this README |
+| Fallback until then | Terminal output of `remember-me demo` + Mermaid architecture below |
 
-Until `demo.gif` lands, do not invent media. Capture instructions (asciinema / ffmpeg) live in [`assets/README.md`](assets/README.md).
+Do not invent GIF bytes or placeholder media.
 
 ---
 
@@ -217,7 +219,9 @@ Regenerate committed metrics with `make bakeoff` if numbers drift. See [docs/BAK
 
 GitHub **Discussions** are not enabled on this repo (as of 2026-09-26). Prefer **[Issues](https://github.com/leonininder/remember-me/issues)** for bugs, ideas, and adapter / integration questions. Optional Discord / 公众号: only when Leon publishes a real funnel — do not invent QR codes.
 
-Suggested repository topics (apply in GitHub settings when ready — listed in [CONTRIBUTING.md](CONTRIBUTING.md)):
+**Version signal:** No GitHub Release yet; the **PREVIEW** badge above is the version signal (do not invent a hollow Release or fake changelog).
+
+Repository topics (applied on GitHub; also listed in [CONTRIBUTING.md](CONTRIBUTING.md)):
 
 `python` · `memory-gate` · `typesafe` · `jev` · `system-one` · `agent-memory` · `redaction` · `fail-closed` · `decision-gate` · `llm-agents`
 

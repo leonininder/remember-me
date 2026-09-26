@@ -64,8 +64,9 @@ Copy this block into a launch PR or wiki index when shipping.
 
 ### Discovery & community
 
-- [ ] **GitHub topics** set (or listed as suggested topics until applied).
+- [x] **GitHub topics** set on `leonininder/remember-me` (python, memory-gate, typesafe, jev, system-one, agent-memory, redaction, fail-closed, decision-gate, llm-agents).
 - [ ] **Versioned Releases** + changelog / version badge (or explicit PREVIEW with no fake badge).
+- [x] **No GitHub Release yet** for remember-me — **PREVIEW** badge is the version signal (do not invent a hollow Release).
 - [ ] **Community funnel** — Issues and/or Discussions; CN: ZH guide + optional 公众号 (do not invent QR).
 - [ ] **Contributor hook** — “adapter N lines” ↔ “gate recipe / integrate in 10 lines” / adopt-skill mini pack.
 - [ ] **Bilingual ZH entry** linked near top for CN discovery.
@@ -97,7 +98,7 @@ pip install -e ".[dev]"
 remember-me demo
 ```
 
-Surfaces: Library · CLI · [Cookbook](../docs/COOKBOOK.md) · [ZH](../docs/GETTING_STARTED_ZH.md) · Bake-off  
+Surfaces: Library · CLI · [Cookbook](COOKBOOK.md) · [ZH](GETTING_STARTED_ZH.md) · Bake-off  
 Checklist file in-repo: this document when copied to `docs/LAUNCH_CHECKLIST.md`.
 
 Suggested GitHub topics (apply when ready):
