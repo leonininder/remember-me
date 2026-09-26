@@ -34,7 +34,7 @@ remember-me demo
 
 ## GitHub topics
 
-Suggested repository topics (apply in GitHub → Settings → Topics when ready; do not invent star metrics):
+Repository topics (applied on GitHub via `gh repo edit --add-topic`; do not invent star metrics):
 
 ```text
 python
