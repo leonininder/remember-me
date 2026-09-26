@@ -31,3 +31,23 @@ remember-me demo
 - Keep PRs small; conventional commits preferred
 - Add/adjust tests with behavior changes
 - Do not commit real API keys or PII
+
+## GitHub topics
+
+Repository topics (applied on GitHub via `gh repo edit --add-topic`; do not invent star metrics):
+
+```text
+python
+memory-gate
+typesafe
+jev
+system-one
+agent-memory
+redaction
+fail-closed
+decision-gate
+llm-agents
+```
+
+Launch shell pattern: [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md).
+

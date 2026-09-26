@@ -2,29 +2,49 @@
 
 **Agents forget. Remember Me decides what to hydrate.**
 
-**Local candidates first. Jev never ranks. Jev only admits.**
+Local candidates first. TypeSafe **Jev** never ranks — Jev only admits. A **decision gate**, not a memory bank or chat LLM.
 
-Local recall finds candidates. TypeSafe **Jev** gates include / stub / skip / promote — *after* retrieval, on a **redacted** set. Not a memory bank. A decision gate.
+**Surfaces:** [Library](#quick-start) · [CLI](#30-second-demo) · [Cookbook](docs/COOKBOOK.md) · [ZH 繁中](docs/GETTING_STARTED_ZH.md) · [Bake-off](#bake-off) · [Launch checklist](docs/LAUNCH_CHECKLIST.md)
 
-### System One / intelligent if
+### System One / Built with TypeSafe Jev
 
-**Decision gate, not a chat LLM.** Jev (System One) answers typed Choice / Score / Noul only — it **cannot generate prose**. remember-me uses it after local recall to decide hydrate / stub / skip. See the [Cookbook](docs/COOKBOOK.md).
+**Decision gate showcase, not a chat LLM.** Jev (System One) answers typed Choice / Score / Noul only — it **cannot generate prose**. remember-me uses it **after** local recall to decide hydrate / stub / skip / promote on a **redacted** candidate set. See the [Cookbook](docs/COOKBOOK.md). Do **not** treat FakeJev offline demos as live TypeSafe proof.
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status: PREVIEW](https://img.shields.io/badge/status-PREVIEW%20Pre--Skill-orange.svg)](SCORECARD.md)
 
+**中文快速上手：** [docs/GETTING_STARTED_ZH.md](docs/GETTING_STARTED_ZH.md)
+
 ---
 
-## Install
+## 30-second demo
 
 ```bash
 pip install -e ".[dev]"   # from repo root (Python 3.11+)
 remember-me demo
-remember-me bakeoff
 ```
 
-Offline by default (`FakeJev`). `HttpJev` speaks System One (`POST /v1/systemone`, pin `jev-1.13.0`) and can **batch** multi-candidate hydrate into one POST — live mode still needs a key + pilot log; do **not** treat cloud as proven.
+Offline by default (`FakeJev`). Optional:
+
+```bash
+remember-me bakeoff
+remember-me demo-dual
+remember-me score-report
+```
+
+`HttpJev` speaks System One (`POST /v1/systemone`, pin `jev-1.13.0`) and can **batch** multi-candidate hydrate into one POST — live mode still needs a key + pilot log; do **not** treat cloud as proven.
+
+### Screenshot / GIF
+
+**Hero media not shipped.** There is no `assets/demo.gif` in this tree (do not link a missing file — that would 404).
+
+| Asset | Status |
+|-------|--------|
+| Capture instructions | [`assets/README.md`](assets/README.md) — **TODO:** record `demo.gif` (asciinema/ffmpeg) before linking it from this README |
+| Fallback until then | Terminal output of `remember-me demo` + Mermaid architecture below |
+
+Do not invent GIF bytes or placeholder media.
 
 ---
 
@@ -109,16 +129,7 @@ for node in result.hydrated:
     print(node.node_id, node.action, node.content[:60])
 ```
 
-### CLI
-
-```bash
-remember-me demo
-remember-me demo-dual
-remember-me bakeoff --out bakeoff_metrics.json
-remember-me score-report
-```
-
-Demo GIF placeholder: see [`assets/`](assets/README.md) (ASCII / Mermaid until a real capture lands).
+Contributor hook: wire the gate with a short cookbook recipe — see [docs/COOKBOOK.md](docs/COOKBOOK.md) and [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md) (integrate-style path in ~10 lines of pipeline construction, not a drop-in Claude plugin).
 
 ---
 
@@ -138,6 +149,34 @@ src/remember_me/
   bakeoff.py     # 50-query offline bake-off → metrics JSON
   cli.py
 ```
+
+---
+
+## FAQ (fear / honesty)
+
+<details>
+<summary>Does it auto-hydrate secrets into the LLM?</summary>
+
+No. Bodies stay behind `content_ref`. Only **redacted marker metadata** is considered for outbound Jev state; hydrate winners are selected by policy after the gate. See [SECURITY.md](SECURITY.md).
+</details>
+
+<details>
+<summary>Does Jev see message bodies or PII?</summary>
+
+Outbound candidate fields are exactly: `node_id`, `kind`, `tags`, `degree`, `last_touch`, `local_score`, `tokens_est`. Tests assert secrets / bodies never appear in outbound state. Details: [SECURITY.md](SECURITY.md).
+</details>
+
+<details>
+<summary>Does this need root, Xposed, or hooks?</summary>
+
+No. remember-me is a local Python library + CLI. It does not touch chat apps, accessibility services, or device privileges. (That class of fear FAQ belongs to consumer overlays like Jarvis — not this repo.)
+</details>
+
+<details>
+<summary>Is FakeJev / bake-off live TypeSafe proof?</summary>
+
+No. Offline FakeJev metrics are **not** live cloud latency or calibrated decision quality. See [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).
+</details>
 
 ---
 
@@ -172,12 +211,27 @@ Offline harness: **`local_topk_stub`** (local top-k stubs; *not* commercial Hind
 make bakeoff
 ```
 
-Regenerate committed metrics with `make bakeoff` if numbers drift. See [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md).
+Regenerate committed metrics with `make bakeoff` if numbers drift. See [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md). Do **not** paste bake-off numbers as live product claims.
+
+---
+
+## Community
+
+GitHub **Discussions** are not enabled on this repo (as of 2026-09-26). Prefer **[Issues](https://github.com/leonininder/remember-me/issues)** for bugs, ideas, and adapter / integration questions. Optional Discord / 公众号: only when Leon publishes a real funnel — do not invent QR codes.
+
+**Version signal:** No GitHub Release yet; the **PREVIEW** badge above is the version signal (do not invent a hollow Release or fake changelog).
+
+Repository topics (applied on GitHub; also listed in [CONTRIBUTING.md](CONTRIBUTING.md)):
+
+`python` · `memory-gate` · `typesafe` · `jev` · `system-one` · `agent-memory` · `redaction` · `fail-closed` · `decision-gate` · `llm-agents`
+
+Launch / distribution shell: [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) (Jarvis → Leon mapping).
 
 ---
 
 ## Further docs
 
+- [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) — Jarvis-style distribution checklist
 - [docs/DUAL_GATE.md](docs/DUAL_GATE.md) — dual-gate egress + escalate_human
 - [docs/REVIEW_PACKET.md](docs/REVIEW_PACKET.md) — David + Justin Sun review packet
 - [docs/COOKBOOK.md](docs/COOKBOOK.md) — Playground + System One hydrate cookbook
