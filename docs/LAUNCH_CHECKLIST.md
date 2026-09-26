@@ -34,7 +34,7 @@ Leon launches (e.g. **remember-me**, **Camera Motion Language**) are not consume
 | 6 | Community funnel (公众号私信 / QR) | GitHub Issues (+ Discussions if enabled); optional Discord/公众号 | Issues (Discussions off as of 2026-09-26) | Wiki + Issues if repo exists |
 | 7 | Separate homepage (optional) | Optional; GitHub README may be enough | No separate site required | Wiki project folder is the home |
 | 8 | Privacy / honesty page | `SECURITY.md` / `PRIVACY.md` / `HONEST_LIMITS.md` | SECURITY + HONEST_LIMITS | Drift evidence honesty + SYNTHETIC goldens label |
-| 9 | GitHub topics | 8–12 searchable topics | Suggested in CONTRIBUTING | n/a for wiki-only |
+| 9 | GitHub topics | 8–12 searchable topics | Applied on GitHub (see CONTRIBUTING list) | n/a for wiki-only |
 | 10 | Versioned Releases | GitHub Releases + changelog | Tag `v0.x` when ready; keep PREVIEW honest | Skill status LOCKED date ≠ product Release |
 | 11 | Built-with-Jev / System One | Decision-gate framing, not chat LLM | “Built with TypeSafe Jev (System One)” | CML does not require Jev; omit unless true |
 | 12 | Fear FAQ | Collapse: secrets? bodies? root? auto-send? | FAQ → SECURITY | FAQ: does gate claim H3 always PASS? (no) |
@@ -101,7 +101,7 @@ remember-me demo
 Surfaces: Library · CLI · [Cookbook](COOKBOOK.md) · [ZH](GETTING_STARTED_ZH.md) · Bake-off  
 Checklist file in-repo: this document when copied to `docs/LAUNCH_CHECKLIST.md`.
 
-Suggested GitHub topics (apply when ready):
+GitHub topics (applied on the repo; keep CONTRIBUTING list in sync):
 
 ```text
 python memory-gate typesafe jev system-one agent-memory
