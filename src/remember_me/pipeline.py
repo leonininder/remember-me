@@ -6,6 +6,7 @@ Local candidates first. Jev never ranks. Jev only admits.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from remember_me.fanout import FANOUT_DEFAULTS, FanOutDefaults
@@ -47,7 +48,7 @@ class MemoryPipeline:
         writeback_gate: WritebackGate | None = None,
     ) -> None:
         self.fanout = fanout or FANOUT_DEFAULTS
-        self.graph = graph or TopologyGraph()
+        self.graph = graph if graph is not None else TopologyGraph()
         self.client = client or FakeJev()
         self.retriever = LocalCandidateRetriever(self.graph, top_k=top_k)
         self.gate = MemoryGate(
@@ -93,10 +94,8 @@ class MemoryPipeline:
                     "horizon": horizon.value,
                 },
             )
-            if wb.action not in (
-                WritebackAction.ALLOW_WRITEBACK,
-                WritebackAction.STAGE_ONLY,
-            ):
+            # This API writes directly to the graph; it has no separate staging store.
+            if wb.action != WritebackAction.ALLOW_WRITEBACK:
                 raise PermissionError(
                     f"writeback rejected: {wb.action} ({wb.reason})"
                 )
@@ -228,7 +227,7 @@ class MemoryPipeline:
             egress = self.run_egress(
                 egress_summary,
                 {
-                    "query_hash_hint": query[:32],
+                    "query_sha256": hashlib.sha256(query.encode("utf-8")).hexdigest(),
                     "hydrated_ids": [h.node_id for h in ingress.hydrated],
                 },
                 sink=egress_sink,

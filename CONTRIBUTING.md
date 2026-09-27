@@ -7,22 +7,22 @@ Thanks for interest in **remember-me** (`remember_me` Python package).
 1. **Jev ≠ store ≠ similarity ranker.** Local retrieval first; Jev only gates hydrate/admit.
 2. **Fail-closed** on Jev timeout / deny / malformed. Never fail-open into cloud influence.
 3. **Redact outbound state.** Bodies, secrets, and PII must never appear in Jev payloads.
-4. **FakeJev for CI.** `HttpJev` is optional and requires `TYPESAFE_API_KEY`.
+4. **Offline CI.** FakeJev and real localhost HTTP contract tests require no live API key. A hosted TypeSafe call separately requires `TYPESAFE_API_KEY`.
 5. **Synthetic fixtures only.** No customer data in `fixtures/`.
 
 ## Dev setup
 
 ```bash
 python -m pip install -e ".[dev]"
-make test
-make lint
+python -m pytest -q
+python -m ruff check .
 remember-me demo
 ```
 
 ## Tests
 
 - Unit: schema, redact, TTL, policy thresholds, fail-closed
-- Integration: FakeJev end-to-end hydrate path (assert Jev is called)
+- Integration: FakeJev hydrate, actual local context assembly, and real localhost HTTP including malformed answers and node-ID round trips
 - Negative: secrets never in outbound; orphan hydrations forbidden
 - Bake-off: 50 queries offline → metrics JSON
 
@@ -34,7 +34,7 @@ remember-me demo
 
 ## GitHub topics
 
-Repository topics (applied on GitHub via `gh repo edit --add-topic`; do not invent star metrics):
+Historical topic list; recheck online settings before treating these as applied. Current candidate settings are in the launch checklist:
 
 ```text
 python

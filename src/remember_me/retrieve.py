@@ -12,11 +12,22 @@ from datetime import UTC, datetime
 from remember_me.graph import TopologyGraph
 from remember_me.types import Candidate, Marker
 
-_TOKEN_RE = re.compile(r"[a-z0-9_]+", re.IGNORECASE)
+_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
+_CJK = "\u3400-\u4dbf\u4e00-\u9fff\U00020000-\U0002fa1f"
+_SCRIPT_RE = re.compile(f"[{_CJK}]+|[^{_CJK}]+")
+_CJK_RE = re.compile(f"^[{_CJK}]+$")
 
 
 def tokenize(text: str) -> set[str]:
-    return {t.lower() for t in _TOKEN_RE.findall(text or "") if len(t) > 1}
+    """Unicode words plus overlapping CJK bigrams; lexical, not semantic search."""
+    tokens: set[str] = set()
+    for word in _TOKEN_RE.findall(text or ""):
+        for part in _SCRIPT_RE.findall(word.casefold()):
+            if _CJK_RE.fullmatch(part):
+                tokens.update(part[i:i + 2] for i in range(max(1, len(part) - 1)))
+            elif len(part) > 1:
+                tokens.add(part)
+    return tokens
 
 
 def estimate_tokens(text: str | None) -> int:
@@ -42,6 +53,10 @@ class LocalCandidateRetriever:
     def retrieve(self, query: str, *, top_k: int | None = None) -> list[Candidate]:
         k = top_k if top_k is not None else self.top_k
         q_tokens = tokenize(query)
+        # Only a truly blank query opts into the legacy recency view. Unsupported
+        # non-empty input must never silently retrieve unrelated memories.
+        if query.strip() and not q_tokens:
+            return []
         now = datetime.now(UTC)
         scored: list[Candidate] = []
         for m in self.graph.all_markers():

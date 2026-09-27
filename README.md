@@ -1,251 +1,169 @@
-# remember-me
+# remember-me — choose which memories enter your agent's context
 
-**Agents forget. Remember Me decides what to hydrate.**
+**A Python memory gate that turns locally retrieved candidates into full text, short stubs, skips, or human-review decisions.**
 
-Local candidates first. TypeSafe **Jev** never ranks — Jev only admits. A **decision gate**, not a memory bank or chat LLM.
+Use it when you already have memory candidates and want an explicit, inspectable decision before loading their contents into an agent prompt. Local retrieval keeps its order; the gate decides what to include. You own the final prompt assembly.
 
-**Surfaces:** [Library](#quick-start) · [CLI](#30-second-demo) · [Cookbook](docs/COOKBOOK.md) · [ZH 繁中](docs/GETTING_STARTED_ZH.md) · [Bake-off](#bake-off) · [Launch checklist](docs/LAUNCH_CHECKLIST.md)
-
-### System One / Built with TypeSafe Jev
-
-**Decision gate showcase, not a chat LLM.** Jev (System One) answers typed Choice / Score / Noul only — it **cannot generate prose**. remember-me uses it **after** local recall to decide hydrate / stub / skip / promote on a **redacted** candidate set. See the [Cookbook](docs/COOKBOOK.md). Do **not** treat FakeJev offline demos as live TypeSafe proof.
+[Quick start](#quick-start) · [Python example](#use-it-in-python) · [繁體中文](docs/GETTING_STARTED_ZH.md) · [Architecture](ARCHITECTURE.md) · [Security](SECURITY.md)
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status: PREVIEW](https://img.shields.io/badge/status-PREVIEW%20Pre--Skill-orange.svg)](SCORECARD.md)
 
-**中文快速上手：** [docs/GETTING_STARTED_ZH.md](docs/GETTING_STARTED_ZH.md)
-
----
-
-## 30-second demo
-
-```bash
-pip install -e ".[dev]"   # from repo root (Python 3.11+)
-remember-me demo
-```
-
-Offline by default (`FakeJev`). Optional:
-
-```bash
-remember-me bakeoff
-remember-me demo-dual
-remember-me score-report
-```
-
-`HttpJev` speaks System One (`POST /v1/systemone`, pin `jev-1.13.0`) and can **batch** multi-candidate hydrate into one POST — live mode still needs a key + pilot log; do **not** treat cloud as proven.
-
-### Screenshot / GIF
-
-**Hero media not shipped.** There is no `assets/demo.gif` in this tree (do not link a missing file — that would 404).
-
-| Asset | Status |
-|-------|--------|
-| Capture instructions | [`assets/README.md`](assets/README.md) — **TODO:** record `demo.gif` (asciinema/ffmpeg) before linking it from this README |
-| Fallback until then | Terminal output of `remember-me demo` + Mermaid architecture below |
-
-Do not invent GIF bytes or placeholder media.
-
----
-
-## Why not just dump context?
-
-| Approach | What it does | What it doesn't |
-|----------|--------------|-----------------|
-| **Dump everything** | Shoves markers into the LLM | Budget, privacy, precision |
-| **Plain TEMPR / local top-k** | Keyword / tag / recency recall | Calibrated hydrate / skip / promote |
-| **Local top-k stub** (bake-off baseline) | Keyword/tag top-k stubs only | Commercial Hindsight product; calibrated live memory OS |
-| **Mem0 / full memory banks** | Store + retrieve product surface | Separating *rank* from *admit* |
-| **remember-me** | **Decision gate** after local recall | Replace your store or embedder |
-
-Honest pitch: we sit **between** local candidates and the LLM. Jev is **not** the database and **not** the similarity ranker.
-
----
-
-## Features
-
-| Feature | Detail |
-|---------|--------|
-| Local topology graph | Markers + `content_ref` (bodies stay off outbound) |
-| TEMPR-style recall | Keyword / tag / recency — **no Jev ranking** |
-| Hydrate gate | Choice `hydrate_action` + Score need + Noul still_matters |
-| Admit gate | Choice admit + closed node-kind taxonomy |
-| Egress / writeback gate | `decide_emit` / `decide_writeback`; fail-closed deny |
-| Escalate human | First-class mid-band + conflicts; structured EscalationRecord |
-| Fail-closed policy | timeout / deny / malformed → skip (optional local stub) |
-| Redaction contract | Outbound = metadata only; secrets asserted in tests |
-| Offline bake-off | 50 synthetic queries → precision / overshare / latency |
-
----
-
-## Architecture
-
-```mermaid
-flowchart LR
-  O[Observe / graph store] --> R[LocalCandidateRetriever<br/>TEMPR mock]
-  R --> X[Redact markers]
-  X --> J[TypeSafe Jev gates<br/>hydrate / admit]
-  J --> P[Policy thresholds]
-  P --> H[Hydrated nodes → LLM]
-```
-
-```text
-observe → write markers + content_ref
-       → local retrieve candidates     [NO Jev ranking]
-       → redact → {node_id, kind, tags, degree, last_touch, local_score, tokens_est}
-       → Jev batch: hydrate_action + need + still_matters
-       → policy → hydrate winners into LLM context
-```
-
-### Policy defaults (fail-closed)
-
-| Confidence | Action |
-|------------|--------|
-| ≥ 0.85 | `hydrate_full` (or promote) |
-| 0.55–0.85 | **`escalate_human`** (+ EscalationRecord) |
-| < 0.55 | `skip` |
-| timeout / deny / malformed | **fail-closed** → skip |
-
----
+**Status:** experimental library and CLI, version 0.1.0. The default demo runs locally with a simulated decision client (`FakeJev`), without an API key. An optional `HttpJev` client connects to TypeSafe System One. This repository does not install a Claude, Codex, or Hermes integration.
 
 ## Quick start
 
-```python
-from remember_me import FakeJev, MemoryPipeline, TopologyGraph, NodeKind
+Install from this repository with Python 3.11+ and Git. A virtual environment is recommended.
 
-g = TopologyGraph()
-g.observe(
+```sh
+git clone https://github.com/leonininder/remember-me.git
+cd remember-me
+python -m venv .venv
+```
+
+Activate the environment:
+
+```powershell
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+```
+
+```sh
+# macOS / Linux
+source .venv/bin/activate
+```
+
+Then install and run:
+
+```sh
+python -m pip install -e .
+python -m remember_me.cli demo
+```
+
+If PowerShell blocks activation, use `.\.venv\Scripts\python.exe` in place of `python` in the last two commands; no execution-policy change is needed. Dependency installation uses the network; the demo itself does not.
+
+The demo asks for UI and locale preferences. An observed offline run produced:
+
+```text
+Candidates (4): pref_lang, fact_tz, pref_theme, proc_commit
+Jev called: True (client.call_count=1)
+pref_lang: escalate_human
+fact_tz: skip
+pref_theme: escalate_human
+proc_commit: skip
+Escalate-human count: 2; escalation records: 2
+Hydrated (0)
+```
+
+This is a condensed transcript, not a quality benchmark. Zero hydrated memories is a valid outcome: the default policy leaves uncertain choices for review. `Jev called` means the simulated client ran in this demo, not a cloud request. For a controlled example that returns full text and demonstrates an outage, run:
+
+```sh
+python examples/context_gate.py
+```
+
+Expected output:
+
+```text
+Forced offline acceptance: Use dark theme
+Simulated timeout: 0 memories loaded; 1 fail-closed decision
+```
+
+The first decision is forced to exercise the full-text path; it is not evidence
+that a model selected the right memory. The timeout demonstrates that missing
+decisions do not silently load the full memory.
+
+## Use it in Python
+
+For an executable local integration, try the [context host](docs/LOCAL_HOST.md):
+
+```sh
+python -m remember_me.local_host --memories examples/host_memories.json --scope alpha --query build --max-bytes 256
+```
+
+It returns actual message objects containing the Alpha build command, excludes
+other-scope/private memories, and records pending-review IDs. Its policy is explicit
+local scope rules, not a simulated or learned Jev decision. The memory block has a
+hard UTF-8 byte cap; the query and message wrapper are outside that cap. Supply
+trusted scope tags and apply your own authorization before connecting a model.
+The [same-task comparison](examples/evaluate_local_host.py) reports retained,
+missed, and wrongly included memories, byte use, and elapsed time on six synthetic
+tasks. It measures the scope rule's behavior, not production or model quality.
+
+```python
+from remember_me import FakeJev, MemoryPipeline, TopologyGraph
+
+graph = TopologyGraph()
+pipe = MemoryPipeline(graph, FakeJev(), top_k=5)
+graph.observe(
     node_id="pref_theme",
-    content="User prefers dark theme",
+    content="Use dark theme in the editor",
     tags=["preference", "ui"],
     salience=0.9,
 )
-
-pipe = MemoryPipeline(g, FakeJev(), top_k=5)
 result = pipe.run("What is my UI theme preference?")
+for decision in result.decisions:
+    print(decision.node_id, decision.action.value, decision.reason)
 
-assert result.jev_called  # Jev is on the hydrate critical path
-for node in result.hydrated:
-    print(node.node_id, node.action, node.content[:60])
+# Inspect decisions first. Your application chooses whether/where to send this text.
+context = "\n".join(node.content for node in result.hydrated)
 ```
 
-Contributor hook: wire the gate with a short cookbook recipe — see [docs/COOKBOOK.md](docs/COOKBOOK.md) and [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md) (integrate-style path in ~10 lines of pipeline construction, not a drop-in Claude plugin).
+`hydrate` means loading a selected memory's contents. `stub_only` returns a marker rather than its body. `escalate_human` returns a structured record for your application to handle; it does not contact a reviewer automatically.
 
----
+## Where it fits
 
-## Package layout
-
-```text
-src/remember_me/
-  types.py       # Marker schema, horizons, closed Choice taxonomies
-  graph.py       # In-memory + optional SQLite topology store
-  retrieve.py    # LocalCandidateRetriever (not Jev)
-  redact.py      # Outbound redaction + secret assertions
-  jev_client.py  # FakeJev + HttpJev
-  policy.py      # Thresholds + fail-closed mapping
-  gates.py       # MemoryGate, EmitEgressGate, WritebackGate, RetainAdmitGate
-  fanout.py      # FANOUT_DEFAULTS (frozen question fan-out)
-  pipeline.py    # observe → retrieve → redact → jev → hydrate (+ run_egress)
-  bakeoff.py     # 50-query offline bake-off → metrics JSON
-  cli.py
+```mermaid
+flowchart LR
+  A[Local memory graph] --> B[Local keyword/tag retrieval]
+  B --> C[Metadata projection]
+  C --> D[Decision client and policy]
+  D --> E[Full text or stub]
+  D --> F[Skip or human review]
+  E --> G[Your prompt assembly]
 ```
 
----
+| Need | Current support |
+|---|---|
+| Inspect choices before adding memory to context | Per-candidate actions, confidence, reasons, escalation records |
+| Keep retrieval separate from admission | Local keyword/tag/recency retrieval; survivors keep their original order |
+| Try without credentials | Offline `FakeJev`, CLI demo, synthetic fixtures |
+| Use TypeSafe System One | `HttpJev`, model pin, batched requests; [runtime guide](docs/RUNTIME_HOWTO.md) |
+| Persist local markers | In-memory graph with explicit SQLite save/load methods |
+| Explore output/writeback decisions | Optional dual-gate API; [contract](docs/DUAL_GATE.md) |
+| Plug into an existing agent | Python integration required; [cookbook](docs/COOKBOOK.md) |
 
-## FAQ (fear / honesty)
+A full memory service manages storage, retrieval, integrations, and operations. This project focuses on the admission step after retrieval. Choose it to experiment with that step; retain your existing store or adapter where needed. No competitor benchmark is claimed.
 
-<details>
-<summary>Does it auto-hydrate secrets into the LLM?</summary>
+## Evidence and limits
 
-No. Bodies stay behind `content_ref`. Only **redacted marker metadata** is considered for outbound Jev state; hydrate winners are selected by policy after the gate. See [SECURITY.md](SECURITY.md).
-</details>
+- **Reproducible offline checks:** tests exercise policy thresholds, fail-closed responses, candidate ordering, redaction, HTTP mocks, real localhost HTTP (including malformed answers and node-ID round trips), and audit records. `FakeJev` is a test double, not calibrated decision quality.
+- **Historical live artifact:** the repository contains a [2026-09-22 pilot](docs/reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md) and [metrics JSON](bakeoff_metrics_live.json) for 50 synthetic queries. These report precision 0.727 versus the local stub baseline's 0.387, recall 0.95 versus 0.98, and p95 latency about 498 ms versus 0.23 ms. They are maintainer-recorded results, not independently reproduced measurements or proof of general production benefit.
+- **Tradeoff:** the recorded live gate adds latency. Measure quality, recall, token use, and latency on your own task before adopting it. Synthetic overshare metrics are not a privacy guarantee.
+- **Safety boundary:** memory bodies are omitted from the default gate payload, but IDs, tags, and derived metadata can still identify people or projects. Supply non-sensitive metadata. Selected full memory text is returned to the caller, who controls any later LLM disclosure. See [SECURITY.md](SECURITY.md).
+- **Scope:** no shipped automatic agent integration or managed production service. Internal review history and earlier promotion gates are retained in [SCORECARD.md](SCORECARD.md); they are not user adoption evidence.
 
-<details>
-<summary>Does Jev see message bodies or PII?</summary>
+## Verify and contribute
 
-Outbound candidate fields are exactly: `node_id`, `kind`, `tags`, `degree`, `last_touch`, `local_score`, `tokens_est`. Tests assert secrets / bodies never appear in outbound state. Details: [SECURITY.md](SECURITY.md).
-</details>
+From the repository root:
 
-<details>
-<summary>Does this need root, Xposed, or hooks?</summary>
-
-No. remember-me is a local Python library + CLI. It does not touch chat apps, accessibility services, or device privileges. (That class of fear FAQ belongs to consumer overlays like Jarvis — not this repo.)
-</details>
-
-<details>
-<summary>Is FakeJev / bake-off live TypeSafe proof?</summary>
-
-No. Offline FakeJev metrics are **not** live cloud latency or calibrated decision quality. See [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md).
-</details>
-
----
-
-## Safety
-
-- Outbound Jev payloads contain **only** redacted marker metadata
-- Tests assert secrets / bodies never appear in outbound state
-- Fail-closed on Jev errors — no theater wrappers that skip Jev on the hydrate path
-- Fixtures under `fixtures/personal_prefs/` are **synthetic** (no PII)
-
-See [SECURITY.md](SECURITY.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
-
----
-
-## Limitations (honest)
-
-- **PREVIEW / Pre-Skill** — not a formal promoted skill. See [SCORECARD.md](SCORECARD.md) (~8.6 weighted after Phase 9.5 offline dual-gate; FakeJev evidence basis — still &lt;9.5).
-- **Offline bake-off ≠ live proof.** `remember-me bakeoff` uses **FakeJev** (deterministic, no network). Published `bakeoff_metrics.json` must not be read as TypeSafe cloud latency or calibrated decision quality. See [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md) and [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md).
-- **No live acceleration claim.** We do **not** claim that Jev accelerates memory versus Hindsight or dump-all. Offline FakeJev precision deltas are **not** live proof. Any future win must be quality/token efficiency under measured live RTT — not “faster FakeJev.”
-- **HttpJev contract fixed; live unproven.** Speaks public System One (`POST /v1/systemone`, `state` + typed `questions`; batched multi-candidate hydrate when possible). Do **not** advertise cloud mode as working without a successful redacted call log. See [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md).
-- **Gate layer, not a memory OS.** Non-goal: Mem0 / embedder / TEMPR-ranker replacement. Jev must not re-rank local candidates.
-- **Not a drop-in Claude / Codex / Hermes skill or plugin.** Library + CLI only; no official TypeSafe skill package. See [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md).
-- **No theater metrics.** No fake star counts, Fortune 500 logos, or invented production case studies. **FakeJev ≠ product proof.**
-
----
-
-## Bake-off
-
-Offline harness: **`local_topk_stub`** (local top-k stubs; *not* commercial Hindsight) vs **Jev-gated** (FakeJev) on 50 labeled synthetic queries — precision@k, recall@k, overshare proxy, latency, Jev call count.
-
-```bash
-make bakeoff
+```sh
+python -m pip install -e ".[dev]"
+python -m pytest -q
+python -m ruff check src tests examples
+python -m remember_me.cli bakeoff --out bakeoff_metrics.json
 ```
 
-Regenerate committed metrics with `make bakeoff` if numbers drift. See [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md). Do **not** paste bake-off numbers as live product claims.
+The bake-off runs 50 synthetic queries with `FakeJev`; use it for regression checks. It does not measure cloud performance.
 
----
+Useful first contributions: a reproducible integration example for one agent, a new labeled retrieval case, or a failing boundary test. [Open an issue](https://github.com/leonininder/remember-me/issues) with your Python/OS version, minimal input, expected decision, and observed decision. Use synthetic data and omit credentials. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Community
+## More documentation
 
-GitHub **Discussions** are not enabled on this repo (as of 2026-09-26). Prefer **[Issues](https://github.com/leonininder/remember-me/issues)** for bugs, ideas, and adapter / integration questions. Optional Discord / 公众号: only when Leon publishes a real funnel — do not invent QR codes.
+- [Architecture](ARCHITECTURE.md) and [security contract](SECURITY.md)
+- [Runtime guide](docs/RUNTIME_HOWTO.md) and [cookbook](docs/COOKBOOK.md)
+- [Local host](docs/LOCAL_HOST.md) and [historical host research](docs/INTEGRATION_MATRIX.md)
+- [Release candidate, launch checklist and feedback](docs/LAUNCH_CHECKLIST.md)
+- [Historical evidence and limits](docs/HONEST_LIMITS.md)
+- [Live evaluation plan](docs/BAKEOFF_PLAN.md)
 
-**Version signal:** No GitHub Release yet; the **PREVIEW** badge above is the version signal (do not invent a hollow Release or fake changelog).
-
-Repository topics (applied on GitHub; also listed in [CONTRIBUTING.md](CONTRIBUTING.md)):
-
-`python` · `memory-gate` · `typesafe` · `jev` · `system-one` · `agent-memory` · `redaction` · `fail-closed` · `decision-gate` · `llm-agents`
-
-Launch / distribution shell: [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) (Jarvis → Leon mapping).
-
----
-
-## Further docs
-
-- [docs/LAUNCH_CHECKLIST.md](docs/LAUNCH_CHECKLIST.md) — Jarvis-style distribution checklist
-- [docs/DUAL_GATE.md](docs/DUAL_GATE.md) — dual-gate egress + escalate_human
-- [docs/REVIEW_PACKET.md](docs/REVIEW_PACKET.md) — David + Justin Sun review packet
-- [docs/COOKBOOK.md](docs/COOKBOOK.md) — Playground + System One hydrate cookbook
-- [docs/MISCONCEPTIONS.md](docs/MISCONCEPTIONS.md) — common mistakes
-- [docs/GETTING_STARTED_ZH.md](docs/GETTING_STARTED_ZH.md) — 繁中快速上手
-- [docs/HONEST_LIMITS.md](docs/HONEST_LIMITS.md) — REAL / FAKE / CLAIMED
-- [docs/RUNTIME_HOWTO.md](docs/RUNTIME_HOWTO.md) — run offline; HttpJev caveats
-- [docs/INTEGRATION_MATRIX.md](docs/INTEGRATION_MATRIX.md) — Claude / Codex / Hermes positioning
-- [docs/BAKEOFF_PLAN.md](docs/BAKEOFF_PLAN.md) — live bake-off plan (when ready)
-- [docs/reviews/](docs/reviews/) — external review notes
-- [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) · [SCORECARD.md](SCORECARD.md)
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+MIT licensed. See [LICENSE](LICENSE).

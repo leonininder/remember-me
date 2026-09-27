@@ -8,7 +8,9 @@
 ## 安裝
 
 ```bash
-pip install -e ".[dev]"   # Python 3.11+
+git clone https://github.com/leonininder/remember-me.git
+cd remember-me
+python -m pip install -e .   # Python 3.11+，建議先建立虛擬環境
 remember-me demo
 remember-me bakeoff
 ```
