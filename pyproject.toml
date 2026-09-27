@@ -46,7 +46,7 @@ Issues = "https://github.com/leonininder/remember-me/issues"
 packages = ["src/remember_me"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/remember_me", "tests", "fixtures", "assets", "README.md", "LICENSE", "ARCHITECTURE.md", "SECURITY.md", "SCORECARD.md"]
+include = ["src/remember_me", "tests", "fixtures", "examples", "docs", "assets", "README.md", "LICENSE", "ARCHITECTURE.md", "SECURITY.md", "SCORECARD.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

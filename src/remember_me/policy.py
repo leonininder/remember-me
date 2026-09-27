@@ -121,6 +121,12 @@ def map_hydrate_action(
 
     conf = float(hydrate_res.confidence) if hydrate_res else 0.0
     raw_action = _parse_action(hydrate_res.value if hydrate_res else None)
+    if raw_action == HydrateAction.OTHER:
+        return GateDecision(
+            node_id=candidate.node_id, action=HydrateAction.SKIP, confidence=0.0,
+            fail_closed=True, reason="fail_closed:unknown_or_missing_action",
+            local_score=candidate.local_score,
+        )
     need = float(need_res.value) if need_res and need_res.value is not None else None
     still = bool(matters_res.value) if matters_res and matters_res.value is not None else None
     route = _parse_route(route_res.value if route_res else None)
@@ -132,9 +138,6 @@ def map_hydrate_action(
         if raw_action == HydrateAction.ESCALATE_HUMAN:
             action = HydrateAction.ESCALATE_HUMAN
             reason = f"accept conf={conf:.3f}; raw escalate_human"
-        elif raw_action == HydrateAction.OTHER:
-            action = HydrateAction.HYDRATE_FULL
-            reason = f"accept conf={conf:.3f}"
         else:
             action = raw_action
             reason = f"accept conf={conf:.3f}"

@@ -9,6 +9,16 @@ from remember_me.pipeline import MemoryPipeline
 from remember_me.types import AdmitDecision, Horizon, HydrateAction, NodeKind
 
 
+def test_pipeline_keeps_initially_empty_caller_graph():
+    graph = TopologyGraph()
+    pipe = MemoryPipeline(graph, FakeJev())
+    graph.observe(node_id="theme", content="dark theme", tags=["theme"])
+    result = pipe.run("theme")
+    assert pipe.graph is graph
+    assert [candidate.node_id for candidate in result.candidates] == ["theme"]
+    assert result.jev_called
+
+
 def test_memory_gate_calls_jev():
     g = TopologyGraph()
     g.observe(node_id="theme", content="dark theme", tags=["ui", "theme"], salience=0.9)
@@ -180,6 +190,28 @@ def test_observe_require_writeback_blocks_silent_durable():
             content="x",
             require_writeback=True,
         )
+
+
+def test_stage_only_does_not_write_or_replace_graph_memory(monkeypatch):
+    import pytest
+
+    from remember_me.gates import WritebackGate
+    from remember_me.types import WritebackAction, WritebackDecision
+
+    graph = TopologyGraph()
+    graph.observe(node_id="existing", content="approved", horizon=Horizon.DURABLE)
+    gate = WritebackGate(FakeJev())
+    monkeypatch.setattr(gate, "evaluate", lambda *args, **kwargs: WritebackDecision(
+        target="graph_durable", node_id=args[1]["node_id"], action=WritebackAction.STAGE_ONLY,
+        confidence=0.99, reason="stage pending approval",
+    ))
+    pipe = MemoryPipeline(graph, FakeJev(), writeback_gate=gate)
+    for node_id in ("new", "existing"):
+        with pytest.raises(PermissionError, match="stage_only"):
+            pipe.observe(node_id=node_id, content="unapproved", horizon=Horizon.DURABLE,
+                         require_writeback=True)
+    assert graph.get("new") is None
+    assert graph.get("existing").content == "approved"
 
 
 def test_pipeline_collects_escalations_list():

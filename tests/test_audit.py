@@ -230,6 +230,6 @@ def test_audit_from_live_gates(tmp_path: Path):
     )
     rows = store.read_all()
     assert all(r.fail_closed for r in rows)
-    blob = (tmp_path / "e.jsonl").read_text()
+    blob = (tmp_path / "e.jsonl").read_text(encoding="utf-8")
     assert FAKE_KEY not in blob
     assert "secret body" not in blob

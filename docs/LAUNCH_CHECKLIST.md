@@ -1,129 +1,75 @@
-# Launch distribution checklist (Jarvis → Leon)
+# remember-me release candidate and feedback
 
-Document type: Process / launch pattern  
-Audience: Leon project launches (devtools, skills, libraries)  
-Status: Living checklist — extract pattern from [jev-chat/jev-chat-jarvis](https://github.com/jev-chat/jev-chat-jarvis) virality; adapt honestly  
-Date: 2026-09-26 (Asia/Taipei)  
-Canonical copies:
+Candidate: **local context host / 2026-09-27**, based on `55108ed5c1cea2211b406ab98ba731d5247c7a83` plus the reviewed working-tree changes. This is an unpublished candidate, not a tag or a live release. Freeze its final commit and archive its diff before publication; never present the base SHA as including these changes.
 
-- Shared wiki: `03_wiki/process/launch_distribution_checklist_from_jev_jarvis_en.md`
-- CML project pointer: `04_projects/Camera_Motion_Language/launch_distribution_checklist_en.md`
-- remember-me repo: `docs/LAUNCH_CHECKLIST.md`
+## Candidate release notes
 
-**Honesty rule:** never invent stars, sponsors, bake-off wins, live Jev proof, or production case studies. Mark missing proof `TODO` or omit.
+- Executable local context assembly from a trusted JSON file: keyword retrieval, scope/private/review decisions, explicit byte cap and body-free decision audit.
+- Unicode/CJK lexical retrieval; blank/unsupported host queries fail explicitly.
+- Closed HTTP answer schemas reject malformed values/types and preserve IDs containing `__`; real loopback tests exercise the wire boundary.
+- Stage-only write admission cannot commit memory; empty supplied graphs retain object identity. Dual decisions use a query hash rather than a query prefix.
+- Revised setup and limitations; no new model, automatic chat-host installation, semantic ranking improvement or external user claim.
 
----
+## Reproduce before publishing
 
-## Why this exists
+Use the [README setup](../README.md#quick-start), then run from the repository root:
 
-Jarvis (Android chat co-pilot) grew fast because the README was a **distribution shell**: one-line pitch, installable artifact in minutes, above-the-fold screenshots, multi-platform siblings, sponsor strip, fear FAQ, privacy page, versioned Releases, bilingual CN entry, and a contributor hook (“adapter ≈ N lines”).
-
-Leon launches (e.g. **remember-me**, **Camera Motion Language**) are not consumer APKs — but the **same shell** transfers if you map each tactic to a developer-project equivalent.
-
----
-
-## Jarvis → Leon mapping table
-
-| # | Jarvis tactic | Developer-project equivalent (Leon) | remember-me example | CML example |
-|---|---------------|-------------------------------------|---------------------|-------------|
-| 1 | One-line pain→outcome pitch | ≤15-word hook under title | “Agents forget. Remember Me decides what to hydrate.” | “Keyed vs sampled camera; Static Shot default; 8% drift gate.” |
-| 2 | Installable artifact &lt;2 min (signed APK) | `pip install -e .` + one demo command | `pip install -e ".[dev]"` → `remember-me demo` | `python measure_frame_drift.py --video …` on a golden |
-| 3 | Above-the-fold screenshot / GIF | Hero GIF or terminal capture in `assets/` | `assets/demo.gif` (or capture instructions until present) | Before/after PASS/FAIL stills + filled shot-card |
-| 4 | Multi-surface siblings (Android / Mac / Win) | Library · CLI · Cookbook · ZH · Bake-off (or skill + script + goldens) | README surfaces row | Skill SOP + drift script + `golden_clips/` |
-| 5 | Sponsor / social-proof strip | Honest strip only; placeholders `TODO` | Omit or `TODO: real sponsor only` | Same |
-| 6 | Community funnel (公众号私信 / QR) | GitHub Issues (+ Discussions if enabled); optional Discord/公众号 | Issues (Discussions off as of 2026-09-26) | Wiki + Issues if repo exists |
-| 7 | Separate homepage (optional) | Optional; GitHub README may be enough | No separate site required | Wiki project folder is the home |
-| 8 | Privacy / honesty page | `SECURITY.md` / `PRIVACY.md` / `HONEST_LIMITS.md` | SECURITY + HONEST_LIMITS | Drift evidence honesty + SYNTHETIC goldens label |
-| 9 | GitHub topics | 8–12 searchable topics | Applied on GitHub (see CONTRIBUTING list) | n/a for wiki-only |
-| 10 | Versioned Releases | GitHub Releases + changelog | Tag `v0.x` when ready; keep PREVIEW honest | Skill status LOCKED date ≠ product Release |
-| 11 | Built-with-Jev / System One | Decision-gate framing, not chat LLM | “Built with TypeSafe Jev (System One)” | CML does not require Jev; omit unless true |
-| 12 | Fear FAQ | Collapse: secrets? bodies? root? auto-send? | FAQ → SECURITY | FAQ: does gate claim H3 always PASS? (no) |
-| 13 | Changelog + version badge | Badge + CHANGELOG or Releases notes | Version badge when tagging | Status line with lock date |
-| 14 | Contributor hook (adapter N lines) | “Integrate in ~10 lines” / gate recipe | Cookbook + INTEGRATION_MATRIX | “Adopt skill without full wiki” mini pack |
-| 15 | Bilingual ZH entry | `docs/GETTING_STARTED_ZH.md` linked near top | Prominent ZH link | Optional ZH stub later |
-
----
-
-## Pre-flight checklist (top items)
-
-Copy this block into a launch PR or wiki index when shipping.
-
-### Pitch & install
-
-- [ ] **One-line pitch** (≤15 words) under the title — pain → outcome.
-- [ ] **Installable artifact &lt;2 minutes** — APK ↔ `pip install -e .` + demo CLI; document exact commands.
-- [ ] **Above-the-fold media** — screenshot/GIF; if missing, `assets/README.md` with capture steps (no fake media).
-
-### Surfaces & proof
-
-- [ ] **Multi-surface siblings** named above the fold (Library · CLI · Cookbook · ZH · Bake-off / skill · script · goldens).
-- [ ] **Sponsor / social-proof** — only real names; else omit or mark `TODO`.
-- [ ] **Built-with-Jev / System One** framing when true — decision gate, not chat LLM; no live-proof claims without logs.
-- [ ] **Fear FAQ** — auto-hydrate secrets? Jev sees bodies? root/Xposed? point to SECURITY / honesty docs.
-- [ ] **Privacy / honesty page** linked from README (SECURITY, HONEST_LIMITS, PRIVACY as applicable).
-
-### Discovery & community
-
-- [x] **GitHub topics** set on `leonininder/remember-me` (python, memory-gate, typesafe, jev, system-one, agent-memory, redaction, fail-closed, decision-gate, llm-agents).
-- [ ] **Versioned Releases** + changelog / version badge (or explicit PREVIEW with no fake badge).
-- [x] **No GitHub Release yet** for remember-me — **PREVIEW** badge is the version signal (do not invent a hollow Release).
-- [ ] **Community funnel** — Issues and/or Discussions; CN: ZH guide + optional 公众号 (do not invent QR).
-- [ ] **Contributor hook** — “adapter N lines” ↔ “gate recipe / integrate in 10 lines” / adopt-skill mini pack.
-- [ ] **Bilingual ZH entry** linked near top for CN discovery.
-- [ ] **Optional homepage** — only if it adds signal beyond README/wiki.
-
-### Anti-patterns (never)
-
-- [ ] Do **not** fabricate star counts, Fortune logos, bake-off deltas as live proof, or “Jev accelerates X” without measured live RTT.
-- [ ] Do **not** claim FakeJev / synthetic goldens as product / H3 proof.
-- [ ] Do **not** put empty sponsor logos or expired QR codes without a working funnel.
-
----
-
-## Worked pitch examples (honest)
-
-| Project | Pitch (≤15 words) |
-|---------|-------------------|
-| Jarvis (reference) | On-phone chat co-pilot: judge first, draft replies, you always send. |
-| remember-me | Agents forget. Remember Me decides what to hydrate. |
-| Camera Motion Language | Split keyed vs sampled camera; default Static Shot; enforce 8% drift. |
-
----
-
-## remember-me launch shell (concrete)
-
-```bash
-# <2 min artifact
-pip install -e ".[dev]"
-remember-me demo
+```sh
+python -m pytest -q
+python -m ruff check .
+python -m remember_me.local_host --memories examples/host_memories.json --scope alpha --query build --max-bytes 256
+python examples/evaluate_local_host.py
 ```
 
-Surfaces: Library · CLI · [Cookbook](COOKBOOK.md) · [ZH](GETTING_STARTED_ZH.md) · Bake-off  
-Checklist file in-repo: this document when copied to `docs/LAUNCH_CHECKLIST.md`.
+Recorded on native Windows with Python 3.13: 268 tests passed, Ruff passed. The host includes `alpha_build`, holds `alpha_review`, and emits 74 context bytes. The synthetic comparison retained all four expected memories and admitted zero wrong memories under its explicit scope rules. It is not a competitor benchmark, learned relevance evaluation or production latency claim. See [host contracts](LOCAL_HOST.md).
 
-GitHub topics (applied on the repo; keep CONTRIBUTING list in sync):
+No hosted API call is required for these commands. Python dependencies require installation/network unless cached; there is no model download. Installation time, Linux/macOS fresh installation and live TypeSafe availability were not measured in this candidate. Historical live evidence stays separate in the README.
 
-```text
-python memory-gate typesafe jev system-one agent-memory
-redaction fail-closed decision-gate llm-agents
-```
+Publication checklist (unchecked means pending, not failure):
 
----
+- [ ] Record final candidate commit, diff hash, Python/OS and exact test output in the release receipt.
+- [ ] Re-run the commands above on that commit; inspect the packaged examples/docs and README links.
+- [ ] Inspect the diff for secrets/private text and retain LICENSE/SECURITY boundaries.
+- [ ] Publish repository changes and verify the links from a logged-out view before sharing a candidate link.
+- [ ] Apply truthful About/topics below; record timestamp and release URL (or explicitly no GitHub Release).
+- [ ] Recheck the destination's current rules and thread before posting the draft once.
+- [ ] Record real feedback separately; update issue/release notes for reproducible defects. Revert the release commit if a blocking regression is confirmed.
 
-## CML launch shell (concrete)
+## About and topics candidate
 
-Demo artifact: `golden_clips/` (SYNTHETIC) + one-command drift:
+About: **Gate which local agent memories reach the prompt, with explicit inclusion decisions, write checks, and audit records.**
 
-```bash
-python <LLM_WIKI_ROOT>/04_projects/Camera_Motion_Language/measure_frame_drift.py \
-  --video <out_or_golden.mp4> --intent static --threshold-pct 8
-```
+Topics: `python`, `agent-memory`, `llm-agents`, `context-management`, `local-first`, `decision-gate`. These are proposed settings, not a claim they have been applied online.
 
-Share pack for adopters without the full wiki: skill SOP + shot-card schema + drift script + one filled shot-card + one PASS/FAIL example. See CML `launch_distribution_checklist_en.md` for the project-specific adaptation.
+## Specific sharing route and draft
 
----
+Audience: Python developers assembling local agent context. The [r/Python monthly Showcase thread](https://www.reddit.com/r/Python/comments/1w78kp5/showcase_thread/) explicitly accepts project showcases; its opening instruction was checked 2026-09-27. It recycles monthly. Check the [current rules](https://www.reddit.com/r/Python/about/rules) and newest pinned Showcase before posting. Use a reply in that thread rather than assume a standalone promotional post is welcome. No post or outreach is performed by this document.
 
-## Related
+Ready-to-edit draft (publish only after the code link resolves to the candidate):
 
-- Jarvis README pattern source: https://github.com/jev-chat/jev-chat-jarvis
-- TypeSafe System One / Jev: https://typesafe.ai (decision model — no prose generation)
+> **What My Project Does**
+>
+> I maintain remember-me, an experimental Python memory gate. Given a local JSON memory file, the new context host emits agent messages plus an audit showing what was included, skipped or held for review. In the checked example, querying “build” in scope Alpha includes Alpha's command, excludes Beta's command and holds a pending change. It runs without an API key. Scope tags must come from trusted application code: this is not authentication, semantic search or prompt-injection protection. There are runnable examples and real localhost HTTP failure tests. Repo: https://github.com/leonininder/remember-me .
+>
+> **Target Audience**
+>
+> Python developers assembling agent prompts from trusted local memory files. Can you reproduce the example and report the first unclear or failing step? The issue templates ask for a synthetic reproduction; please omit private memories and credentials.
+>
+> **Comparison**
+>
+> Dump-all context admits every stored item; a local top-k retriever ranks matches. This host adds an explicit scope admission step and audit after retrieval. Its synthetic scope-rule comparison is not evidence of superiority over scope-aware tools or semantic memory products.
+
+## Feedback and market record
+
+Use the repository's **Bug report** or **First-run feedback** issue template. Do not require a star, favorable score or public disclosure of private logs. A useful report includes revision, OS/Python, command, expected and actual behavior, minimal synthetic data and whether the example completed.
+
+| Observation | Actual value |
+|---|---|
+| Published candidate SHA / URL / date | Pending |
+| Showcase permalink / posting date | Not posted |
+| First-run attempts and successful completions | Not measured |
+| First blocking step and elapsed setup time | Not measured |
+| Repeat use / reason for not reusing | Not measured |
+| GitHub visitor / clone window | Not obtained; agent/maintainer clones contaminate counts |
+
+Observe for 14 days after actual posting. Compare failures and completed attempts before interpreting stars. Visitor and clone counts are not a linked user funnel. No feedback means unknown demand, not a fabricated success or failure. Release readiness and these market observations are separate judgments.

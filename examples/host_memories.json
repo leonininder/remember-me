@@ -1,0 +1,9 @@
+[
+  {"id":"alpha_build","text":"Alpha build command is python -m build.","tags":["scope:alpha","build"]},
+  {"id":"beta_build","text":"Beta build command is npm run build.","tags":["scope:beta","build"]},
+  {"id":"alpha_deploy","text":"Alpha deploy target is staging.","tags":["scope:alpha","deploy"]},
+  {"id":"beta_deploy","text":"Beta deploy target is production.","tags":["scope:beta","deploy"]},
+  {"id":"alpha_review","text":"Alpha build replacement is pending approval.","tags":["scope:alpha","build","review"]},
+  {"id":"alpha_private","text":"Alpha deploy credentials are private synthetic data.","tags":["scope:alpha","deploy","private"]},
+  {"id":"unscoped_build","text":"Unscoped build command is make.","tags":["build"]}
+]

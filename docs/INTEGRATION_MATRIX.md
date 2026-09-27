@@ -1,5 +1,7 @@
 # Integration matrix — Claude Code / Codex / Hermes
 
+> **Historical upstream research, 2026-09-20.** This is not a current verified installation guide or a claim that the listed adapters ship. The executable integration delivered by this repository is the [local context host](LOCAL_HOST.md); use that guide first. Recheck external APIs before implementing an adapter.
+
 **Written:** 2026-09-20 (CST / Asia/Taipei)  
 **Question:** Can remember-me plug into these agents? How does that differ from community Jev usage?
 

@@ -5,6 +5,8 @@
 
 ---
 
+> **Evidence update (2026-09-27):** This document preserves the 2026-09-20/21 offline review. Later live artifacts do exist: [2026-09-22 enrich-v2 pilot](reviews/LIVE_PILOT_ENRICH_V2_2026-09-22.md) and [recorded metrics](../bakeoff_metrics_live.json). Statements below saying no live logs exist are historical and superseded by those artifacts. Their results have not been independently reproduced in this update. See the current [README](../README.md#evidence-and-limits) and [security contract](../SECURITY.md) for present claims and boundaries.
+
 ## One-line verdict
 
 Offline FakeJev bake-off shows a **synthetic gate** can filter candidates and nudge precision@k. That is **not** evidence that live TypeSafe Jev accelerates memory recall, reduces tokens, or beats Hindsight under production latency.

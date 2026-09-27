@@ -11,6 +11,7 @@ fail-closed (see policy.map_hydrate_action).
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 from typing import Any, Protocol, runtime_checkable
 
@@ -623,7 +624,7 @@ class HttpJev:
         if not isinstance(answers, dict):
             return JevBatchResponse(node_id=node_id, malformed=True, error="missing_answers")
 
-        mapped = _map_system_one_answers(answers)
+        mapped = _map_system_one_answers(answers, expected_questions=payload["questions"])
         if mapped is None:
             return JevBatchResponse(node_id=node_id, malformed=True, error="bad_answers")
         return JevBatchResponse(node_id=node_id, results=mapped)
@@ -705,7 +706,9 @@ class HttpJev:
                 JevBatchResponse(node_id="*", malformed=True, error="missing_answers")
             )
 
-        return _split_batched_answers(answers, node_ids=node_ids)
+        return _split_batched_answers(
+            answers, node_ids=node_ids, expected_questions=payload["questions"]
+        )
 
 
     def decide_emit(
@@ -922,14 +925,15 @@ def _hydrate_questions_batched(
 
 
 def _split_batched_answers(
-    answers: dict[str, Any], *, node_ids: list[str]
+    answers: dict[str, Any], *, node_ids: list[str],
+    expected_questions: dict[str, dict[str, Any]] | None = None,
 ) -> list[JevBatchResponse]:
     """Split ``{node_id}__{qid}`` answer keys into per-node ``JevBatchResponse``."""
     by_node: dict[str, dict[str, Any]] = {nid: {} for nid in node_ids}
     for key, ans in answers.items():
         if "__" not in str(key):
             continue
-        nid, _, qid = str(key).partition("__")
+        nid, _, qid = str(key).rpartition("__")
         if nid not in by_node or not qid:
             continue
         by_node[nid][qid] = ans
@@ -942,7 +946,11 @@ def _split_batched_answers(
                 JevBatchResponse(node_id=nid, malformed=True, error="missing_node_answers")
             )
             continue
-        mapped = _map_system_one_answers(node_answers)
+        expected = None if expected_questions is None else {
+            key.rpartition("__")[2]: question for key, question in expected_questions.items()
+            if key.rpartition("__")[0] == nid
+        }
+        mapped = _map_system_one_answers(node_answers, expected_questions=expected)
         if mapped is None:
             results.append(
                 JevBatchResponse(node_id=nid, malformed=True, error="bad_answers")
@@ -1023,6 +1031,7 @@ def _writeback_questions() -> dict[str, dict[str, Any]]:
 
 def _map_system_one_answers(
     answers: dict[str, Any],
+    *, expected_questions: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, JevQuestionResult] | None:
     """Map System One ``answers`` dict → JevQuestionResult.
 
@@ -1031,23 +1040,41 @@ def _map_system_one_answers(
     the ordered string criteria — verify live responses for 0- vs 1-based).
     """
     results: dict[str, JevQuestionResult] = {}
+    if expected_questions is not None and set(answers) != set(expected_questions):
+        return None
     for qid, ans in answers.items():
         if not isinstance(ans, dict):
             return None
         atype = ans.get("type")
+        if expected_questions is not None and atype != expected_questions[qid]["type"]:
+            return None
         try:
             if atype == "choice":
                 if "choice" not in ans or "confidence" not in ans:
                     return None
                 value: Any = ans["choice"]
+                if not isinstance(value, str):
+                    return None
+                if expected_questions is not None:
+                    choices = expected_questions[qid].get("criteria", {})
+                    if isinstance(choices, dict) and value not in choices:
+                        return None
+                if type(ans["confidence"]) not in (int, float):
+                    return None
                 confidence = float(ans["confidence"])
             elif atype == "score":
                 if "score" not in ans or "confidence" not in ans:
                     return None
                 value = ans["score"]
+                if type(value) not in (int, float) or not math.isfinite(value):
+                    return None
+                if type(ans["confidence"]) not in (int, float):
+                    return None
                 confidence = float(ans["confidence"])
             elif atype == "noul":
                 if "noul" not in ans:
+                    return None
+                if type(ans["noul"]) not in (int, float):
                     return None
                 noul = float(ans["noul"])
                 value = noul >= 0.5
@@ -1055,18 +1082,17 @@ def _map_system_one_answers(
                 confidence = noul
             else:
                 return None
-            # Clamp confidence into [0, 1] for pydantic; malformed if out of range badly.
+            if not math.isfinite(confidence):
+                return None
+            # Wire probabilities outside the closed interval are malformed.
             if confidence < 0.0 or confidence > 1.0:
-                # Allow slight float noise; hard reject otherwise.
-                if confidence < -0.01 or confidence > 1.01:
-                    return None
-                confidence = max(0.0, min(1.0, confidence))
+                return None
             results[qid] = JevQuestionResult(
                 question_id=qid,
                 value=value,
                 confidence=confidence,
                 raw=ans,
             )
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return None
     return results
